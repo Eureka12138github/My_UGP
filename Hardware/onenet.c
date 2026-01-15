@@ -436,10 +436,6 @@ unsigned char OneNet_FillBuf(char *buf)
 	sprintf(text, "\"noise_excess\":{\"value\":%s},", (decibels > Noise_Limit) ? "true" : "false");//噪音过大
 	strcat(buf, text);
 	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"led\":{\"value\":%s}", led_info.Led_Status ? "true" : "false");//LED
-	strcat(buf, text);
-	
 	strcat(buf, "}}");
 	
 	return strlen(buf);

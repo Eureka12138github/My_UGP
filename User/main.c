@@ -1,6 +1,5 @@
 #include "OLED_UI.h"
 #include "OLED_UI_MenuData.h"
-#include "led.h"
 #include "usart.h"
 #include "esp8266.h"
 #include "onenet.h"
@@ -97,56 +96,6 @@ bool Noise_Data_Error_Flag = false;
 // VCC -> 3.3V
 // SCL -> PB8
 // SDA -> PB9
-/*
-现在OLED问题：当某一行因为字符串过长需要动态显示的时候，这一行能够正常从右到左正常显示，
-但是如果下一行的字符串也比较长（接近屏幕右侧显示极限）的话，此时正常情况下这一行是不会动态显示的，
-因为并没有超过显示极限，但是现在的情况是这本应该是静态的一行似乎被动态的那一行影响了，比如现在屏幕一共有4行，
-动态的那行在第二行，静态但接近显示极限那行为第三行，此时按下向下按键，动态行变为第一行，静态行变为第二行，
-但静态行似乎受到动态行的影响，字符串整体向左偏移一小段距离。原因未知。250324
-初步判断为字符串滚动判断逻辑在边界处理时有所漏洞，指示滚动的变量在没有及时清零；
-解决方法：
-			1、找到滚动判断代码所在，修改逻辑。
-			2、列表中的文字内容短一点，使其不接近平面右侧，或者文字长一点，使其本来也判定为滚动，就是不要在边界状态。
-			
-除此之外列表的反显条（或者说选中指示条）也有点问题，当没有数据参数只有文本信息时，反显条能够正常将文本信息刚好包含
-但是如果有参数的话，会有一个数字裸露在外，比如temp:85，反显条只会包含到8,5就裸露在外了，可以通过多加一个空格解决这个问题，
-但这毕竟是治标不治本，而且多加一个空格的话会使得字符串更加接近屏幕右侧，此时有可能会出现上面提到的边界问题。
-
-下划线光标有问题
-
-上面问题已经全部解决：
-1、静态行异常偏移问题：1)修改OLED_UI.c中的 PrintMenuElements 函数中的
-int16_t StringLength = CalcStringWidth(ChineseFont,ASCIIFont,page->General_MenuItems[i].General_item_text);
-修改为：int16_t StringLength = CalcStringWidth(ChineseFont,ASCIIFont,page->General_MenuItems[i].General_item_text,\
-*(page->General_MenuItems[i].General_Value));
-错误分析：
-我的分析：根本原因是字符串宽度的错误计算导致的文字滚动逻辑出错
-		若只是：“噪音阈值：%d dBA”，即使不计算动态值，此行也不会偏移，因为即使计算了动态值也没有到达屏幕右侧末端，所以不会偏移
-		若为：“噪音阈值：%d dBA ”，若不计算动态值，此行会在某种情况下（下文有介绍）小段偏移后停下，逻辑存在矛盾，
-		根据计算（忽略动态值的错误计算）此行不应该偏移，但实际上是应该偏移的，我感觉可能是在按键按下的时候
-		在程序的某处进行了正确的逻辑判断，即应该偏移，但按键放开后，又回归到不偏移的错误逻辑，而更让人困扰的是，
-		并非是每按下一次按键，该行就会偏移，它是在从第二行到第三行，从第三行到第二行切换之间才会发生小段向左偏移。
-DS的分析：问题的核心在于 动态值未被计算导致的滚动误判 和 偏移量生命周期管理不完整。	
-！！！关于这个问题，虽然解决了，但现在我还是不太理解为什么这样就能解决。250325！！！
-
-2、OLED_UI.c中PrintMenuElements函数里的OLED_PrintfMixArea函数（1037行）
-从OLED_PrintfMixArea(....,page->General_MenuItems[i].General_item_text);
-修改为：OLED_PrintfMixArea(....,page->General_MenuItems[i].General_item_text,*(page->General_MenuItems[i].General_Value));
-这个很好理解，之前是忽略了动态值导致字符串宽度计算出错从而导致光标宽度不能完全覆盖字符串；
-
-3、新增下划线光标，在OLED_UI.c的ReverseCoordinate函数中（99行）添加，这个很好理解，就不作解释了。
-
-
-今天得到了一个教训就是要给ROM留有至少4~6kB的余量，不然MCU可能会无法复位，需要重新烧录，
-比如今天的Total ROM Size 为63.87kB，这已经相当接近64kB了，如果这时候按下复位键，程序必然崩溃，导致无法复位
-需要重新烧录才能解决问题。250420
-
-惑之未解：
-	1、需要将startup_stm32f10x_md.s中的第33行改为Stack_Size      EQU     0x00000800
-	hmac_sha1.h中的第9行改为#define MAX_MESSAGE_LENGTH		1024
-	原因未知250213
-	*/
-
 
 
 /**
@@ -254,14 +203,7 @@ void Dust_Data_Error(void){
 	Delay_s(3);//加上这句就会来不及喂狗，会看门狗复位，
 	//现在准备只输出错误信息，但不复位
 }
-//此函數每隔 ALARM_WRITE_INTERVAL_MS 毫秒执行一次，如果标志位本来就为真，那么什么也不做
-//当实际数据超过阈值时，就会将标志位置为假，有没有可能这种情况，
-//那就是即将执行 Turn_Warning_Show_Flag 而这时候恰好数据超过了阈值，那么标志位就会快速置为真，
-//似乎无法满足每隔 ALARM_WRITE_INTERVAL_MS 才置真这个要求？
-//那就算被快速置真了， 为什么会影响到噪音数据的接收呢？我观察到的是确实有噪音数据来，
-//但是似乎没通过CRC校验，这是为何呢？是因为对FLASH频繁操作导致的问题吗？
-//那为什么没有影响到其他的数据接收，单独影响到了，噪音的接收？
-//现在准备改为，当标志位为 false 的时候，定时器对应的重装值才能递减，现看看
+
 /**
  * @brief 环境报警信息写入函数
  *
@@ -544,7 +486,6 @@ void Initialize_Hardware(void) {
     OLED_Init();//OLED屏初始化，与数据显示有关
     Timer2_Init();//定时2初始化，与任务调度有关
     PMS7003_Init();//扬尘传感器初始化
-//    AD_Init();//ADC初始化，与声音数据采集有关，现改为XM7903之后，无再进行数据采集，故将此注释
     Store_Init();//FLASH初始化，便于后续存储阈值与独立看门狗次数
     Alarm_Init();//警报初始化
     Usart1_Init(9600);
