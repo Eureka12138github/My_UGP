@@ -4,7 +4,7 @@
 */
 #include "OLED.h"
 /**
-  * 声明OLED显存数组，此数组已经在OLED_Driver.c中定义
+  * 声明OLED显存数组，此数组已经在 bsp_oled.c中定义
   * 所有的显示函数，都只是对此显存数组进行读写
   * 随后调用OLED_Update函数或OLED_UpdateArea函数
   * 才会将显存数组的数据发送到OLED硬件，进行显示

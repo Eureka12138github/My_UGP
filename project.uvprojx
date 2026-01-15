@@ -337,7 +337,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\DSPlib\Include</IncludePath>
+              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\DSPlib\Include;.\BSP\stm32f103c8t6_minidev</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -722,16 +722,6 @@
               <FilePath>.\Hardware\OLED.h</FilePath>
             </File>
             <File>
-              <FileName>OLED_driver.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED_driver.c</FilePath>
-            </File>
-            <File>
-              <FileName>OLED_driver.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED_driver.h</FilePath>
-            </File>
-            <File>
               <FileName>OLED_Fonts.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\OLED_Fonts.c</FilePath>
@@ -940,6 +930,16 @@
               <FileName>cJSON.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\CJSON\cJSON.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>BSP</GroupName>
+          <Files>
+            <File>
+              <FileName>bsp_oled.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_oled.c</FilePath>
             </File>
           </Files>
         </Group>

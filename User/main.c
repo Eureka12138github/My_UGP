@@ -593,10 +593,9 @@ void Initialize_System(void) {
     *                           OneNET平台MQTT连接
     \* *************************************************************************** */
     // 建立与OneNET平台的MQTT连接
-    retry_count = 0;
-    while (retry_count < MAX_RETRY_COUNT) {
-        unsigned char errorCode = OneNet_DevLink();
-
+    retry_count = 0; 
+    while (retry_count < MAX_RETRY_COUNT) {	
+        unsigned char errorCode = OneNet_DevLink(); 		
         if (errorCode == 0) {
             // 连接成功，跳出重试循环
             break;
@@ -643,10 +642,9 @@ void Initialize_System(void) {
     
     /* *************************************************************************** *\
     *                           OneNET主题订阅及初始化完成提示
-    \* *************************************************************************** */
-    // 订阅OneNET平台主题
+    \* *************************************************************************** */ 
+	// 订阅OneNET平台主题
     OneNET_Subscribe();
-    
     // 显示初始化完成提示
     OLED_ClearArea(66, 0, 127-65, 63);
     OLED_ShowChinese(66, 0, "连接成功！", OLED_12X12_FULL);
@@ -655,6 +653,11 @@ void Initialize_System(void) {
     OLED_ShowChinese(66, 48, "进入系统", OLED_12X12_FULL);
     OLED_Update();    
     Delay_s(1);
+	OLED_Clear();
+	OLED_ShowString(66, 16, "Test2", OLED_7X12_HALF);
+    OLED_Update();    
+    Delay_s(2);	
+	
     OLED_Clear();    
     
     /* *************************************************************************** *\
