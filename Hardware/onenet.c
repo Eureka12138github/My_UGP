@@ -316,21 +316,28 @@ unsigned char OneNet_DevLink(void)
 	unsigned char *dataPtr;
 	char authorization_buf[160];
 	unsigned char result = 1; // 默认为鉴权失败
-		OLED_ClearArea(66, 0, 127-65, 63);
-		OLED_ShowString(66, 16, "Test0", OLED_7X12_HALF);
-		OLED_Update();
-		Delay_s(2);		
+	
+//	{		//test OLED LOGO
+//			OLED_ClearArea(66, 0, 127-65, 63);
+//			OLED_ShowString(66, 16, "Test0", OLED_7X12_HALF);
+//			OLED_Update();
+//			Delay_s(2);
+//	}	
+		
 	// 根据设备ID、设备秘钥、设备名称生成OneNET平台鉴权Token
 	if (OneNET_Authorization("2018-10-31", ONENET_PROID, 1956499200, ONENET_ACCESS_KEY, ONENET_DEVICE_NAME,
 		authorization_buf, sizeof(authorization_buf), 0) != 0) {
 		result = 1; // 鉴权Token生成失败
 		goto exit;
 	}
-		OLED_Clear();
-		OLED_ShowImageArea(0, 0, 64, 64, 0, 0, 64, 64, USC_LOGO_64);
-		OLED_ShowString(66, 16, "Test1", OLED_7X12_HALF);
-		OLED_Update();
-		Delay_s(2);	
+		{ 	//test OLED LOGO
+	//		OLED_Clear();
+	//		OLED_ShowImageArea(0, 0, 64, 64, 0, 0, 64, 64, USC_LOGO_64);
+	//		OLED_ShowString(66, 16, "Test1", OLED_7X12_HALF);
+	//		OLED_Update();
+	//		Delay_s(2);				
+		}
+
 	// 构造MQTT CONNECT包
 	if(MQTT_PacketConnect(ONENET_PROID, authorization_buf, ONENET_DEVICE_NAME, 256, 1, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) != 0)
 	{

@@ -595,7 +595,20 @@ void Initialize_System(void) {
     // 建立与OneNET平台的MQTT连接
     retry_count = 0; 
     while (retry_count < MAX_RETRY_COUNT) {	
-        unsigned char errorCode = OneNet_DevLink(); 		
+		{		//test OLED LOGO
+				OLED_ClearArea(66, 0, 127-65, 63);
+				OLED_ShowString(66, 16, "Test0", OLED_7X12_HALF);
+				OLED_Update();
+				Delay_s(2);
+		}		
+        unsigned char errorCode = OneNet_DevLink(); 
+		
+		{		//test OLED LOGO
+				OLED_ClearArea(66, 0, 127-65, 63);
+				OLED_ShowString(66, 16, "Test1", OLED_7X12_HALF);
+				OLED_Update();
+				Delay_s(2);
+		}		
         if (errorCode == 0) {
             // 连接成功，跳出重试循环
             break;
