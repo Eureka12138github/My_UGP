@@ -3,6 +3,7 @@
 #include "stm32f10x.h"                  // Device header
 #include <stdbool.h>
 #include <stddef.h>  // 用于NULL定义
+#include "bsp_pms7003.h"
 // 结构体定义（所有需要使用的文件都包含此头文件）
 typedef struct {
     uint16_t pm1_0_cf1;    			// 数据1: PM1.0 CF=1
@@ -19,8 +20,7 @@ typedef struct {
     uint16_t particles10;   		// 数据12: ≥10μm颗粒数
     bool is_valid;          		// 校验通过标志
 } PM_SensorData;
-PM_SensorData PMS_ParseDataPacket(const uint8_t *packet, size_t packet_len);
-void PMS7003_Init(void);
+PM_SensorData PMS_ParseDataPacket(const uint8_t *packet);
 #endif 
 
 

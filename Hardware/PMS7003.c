@@ -17,16 +17,41 @@ typedef enum {
     Particles5_0 = 24, 
     Particles10  = 26, 
 } PM_DataIndex;
-// 数据包解析函数（带校验和验证）
-PM_SensorData PMS_ParseDataPacket(const uint8_t *packet, size_t packet_len) {
-    PM_SensorData data = {0};
-    data.is_valid = false; 
 
-    // 基础校验：空指针或长度不足(此处无需进行数据校验，因为在串口1中断函数已经校验过了。)
-    if (packet == NULL || packet_len < Particles10 + 2) {
+/**
+ * @brief 解析PMS7003传感器数据包
+ * @param[in] packet 指向待解析数据包的指针（必须指向完整的32字节PMS7003数据包）
+ * @return PM_SensorData 解析后的传感器数据结构体
+ */
+PM_SensorData PMS_ParseDataPacket(const uint8_t *packet) 
+{
+    PM_SensorData data = {0};
+    
+    if (packet == NULL) {
         return data;
     }
-    // 解析各字段
+    
+    // 验证起始符和数据长度字段（协议规定：0x42 0x4D 0x00 0x1C ...）
+    if (packet[0] != 0x42 || packet[1] != 0x4D || 
+        packet[2] != 0x00 || packet[3] != 0x1C) {
+        return data;
+    }
+    
+    // 计算前30字节校验和
+    uint16_t calculated_checksum = 0;
+    for (int i = 0; i < 30; i++) {
+        calculated_checksum += packet[i];
+    }
+    
+    // 提取接收的校验和（大端序）
+    uint16_t received_checksum = (packet[30] << 8) | packet[31];
+    
+    // 验证校验和
+    if (calculated_checksum != received_checksum || calculated_checksum == 0) {
+        return data;
+    }
+    
+    // 解析有效数据
     data.pm1_0_cf1    = PARSE_DATA(packet, PM1_0_CF1);
     data.pm2_5_cf1    = PARSE_DATA(packet, PM2_5_CF1);
     data.pm10_cf1     = PARSE_DATA(packet, PM10_CF1);
@@ -39,15 +64,8 @@ PM_SensorData PMS_ParseDataPacket(const uint8_t *packet, size_t packet_len) {
     data.particles2_5 = PARSE_DATA(packet, Particles2_5);
     data.particles5_0 = PARSE_DATA(packet, Particles5_0);
     data.particles10  = PARSE_DATA(packet, Particles10);
-    data.is_valid = true;
+    data.is_valid     = true;
+    
     return data;
 }
-void PMS7003_Init(void){
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Pin=GPIO_Pin_5|GPIO_Pin_6;
-	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB,&GPIO_InitStructure);
-	GPIO_SetBits(GPIOB,GPIO_Pin_5|GPIO_Pin_6);//表示刚开始时，B5、B6口为高电平
-}
+

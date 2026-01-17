@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "usart.h"
+#include "bsp_usart.h"
 
 int test_case_length[] = {9, 8, 28, 50, 50, 20, 54, 73, 54, 73};
 
