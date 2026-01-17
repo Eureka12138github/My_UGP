@@ -8,7 +8,7 @@ MyProject/
 │       ├── main.h
 │       └── stm32f10x_it.h
 │
-├── Drivers/                  ← ST HAL 库（不动）
+├── Drivers/                  
 ├── BSP/                      ← 板级支持包
 │   └── stm32f103c8t6_minidev/
 │       ├── bsp_led.c/h
@@ -43,3 +43,4 @@ MyProject/
 ├── .gitignore
 ├── README.md
 └── LICENSE
+

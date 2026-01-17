@@ -812,16 +812,6 @@
               <FilePath>.\Hardware\onenet.h</FilePath>
             </File>
             <File>
-              <FileName>usart.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\usart.c</FilePath>
-            </File>
-            <File>
-              <FileName>usart.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\usart.h</FilePath>
-            </File>
-            <File>
               <FileName>DHT11.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\DHT11.c</FilePath>
@@ -940,6 +930,46 @@
               <FileName>bsp_oled.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_oled.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_config.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_oled.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_oled.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_pms7003.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_pms7003.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_pms7003.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_pms7003.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_xm7903.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_xm7903.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_xm7903.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_xm7903.h</FilePath>
             </File>
           </Files>
         </Group>

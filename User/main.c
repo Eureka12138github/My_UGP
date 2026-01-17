@@ -1,12 +1,15 @@
 #include "OLED_UI.h"
 #include "OLED_UI_MenuData.h"
-#include "usart.h"
+#include "bsp_usart.h"
+#include "PMS7003.h"
+#include "XM7903.h"
 #include "esp8266.h"
 #include "onenet.h"
 #include "Timer.h"
 #include "DHT11.h"
 #include "Alarm.h"
 #include "MYIWD.h"
+
 #define ESP8266_ONENET_INFO		"AT+CIPSTART=\"TCP\",\"mqtts.heclouds.com\",1883\r\n"
 #define TASK_NUM_MAX 		(sizeof(TaskComps) / sizeof(TaskComps[0])) //计算数组大小 
 #define DMA_TASK_NUM_MAX 	(sizeof(DMATaskComps) / sizeof(DMATaskComps[0])) //计算数组大小 	
@@ -16,8 +19,8 @@
 #define Buzzer_Buzz_INTERVAL_MS 		500  // 蜂鸣器警报“闪烁”周期0.5秒
 #define Get_Noise_Data_INTERVAL_MS 		500  // 获取噪声大小数据周期0.5秒
 #define Read_Time_INTERVAL_MS 		500  // 时间刷新周期0.5秒
-#define Dust_MAX_WAIT_MS 		6000  // 时间刷新周期0.5秒
-#define Noise_MAX_WAIT_MS 		6000  // 时间刷新周期0.5秒
+#define Dust_MAX_WAIT_MS 		6000  // 最长合法数据等待时间（如果超过这个时间还没有合法数据来，就会触发对应函数）
+#define Noise_MAX_WAIT_MS 		6000  // 最长合法数据等待时间
 #define ALARM_WRITE_INTERVAL_MS 		10000  // 报警记录周期60秒，此值居然能影响噪音数据接收，为何？
 
 /***********关于数据发送指示圆圆心横坐标x的宏***********/
@@ -40,7 +43,7 @@ bool Dust_Alarm = false;
 bool Warning_Show_Flag1 = true;
 bool Warning_Show_Flag2 = true;
 bool Warning_Show_Flag3 = true;
-bool Noise_Data_Error_Flag = false;
+bool decibels_valid = true;
 #if 0
 需要注释的内容
 #endif
@@ -187,10 +190,13 @@ typedef struct {
  */
 void Dust_Data_Read(void) {
     // 解析PMS7003传感器发送的串口数据包，获取PM数据
-    PM_Data = PMS_ParseDataPacket(Serial_RxPacket, PMS_PACKET_LEN);
 
-    // 提取大气环境中PM2.5的值并存储到全局变量中
-    PM2_5_ENV = PM_Data.pm2_5_env;
+        PM_SensorData data = PMS_ParseDataPacket(BSP_PMS7003_GetRxBuffer());
+        
+        if (data.is_valid) {
+            PM_Data = data;           // 更新完整数据结构
+            PM2_5_ENV = data.pm2_5_env; // 更新特定字段
+        }
 }
 
 /**
@@ -234,7 +240,7 @@ void Write_Warning_Meg(void) {
  *一旦此函数被调用，则记录错误类型为：” ENV_SENSOR_NOISE_ANOMALY “
  * 并进行延时，即将系统复位
  */
-void NOise_Data_Error(void){//暂时我先注释掉这个函数，因为我要用5v口
+void Noise_Data_Error(void){
 	ErrorType(ENV_SENSOR_NOISE_ANOMALY);
 	Delay_s(3);
 }
@@ -258,7 +264,7 @@ typedef struct {
  * 当对应DMA传输完成后，主循环中调用的任务处理函数将被执行。
  */
 static DMATaskComps_t DMATaskComps[] = {
-    {&dma_C15_flag, Dust_Data_Read},  // dma_C15_flag：DMA通道15完成标志；Dust_Data_Read：粉尘数据读取任务
+    {&pms7003_rx_ready, Dust_Data_Read},  // pms7003_rx_ready：DMA通道15完成标志；Dust_Data_Read：粉尘数据读取任务
 };
 
 /**
@@ -277,6 +283,46 @@ void DMATaskHandler(void) {
             }
         }
     }
+}
+
+
+
+
+/**
+ * @brief XM7903 噪声传感器任务函数
+ * 
+ * 被任务调度器周期性调用（例如每 1000ms）
+ * 功能：
+ *   - 发送 MODBUS 查询命令
+ *   - 启动 DMA 接收
+ *   - 检查是否已收到有效响应，并更新全局数据
+*   （注：如果传感器响应较慢还需考虑加入“忙”标志位，当目前XM7903完全能够在500ms间隔内进行相应，所以就不加了）
+ */
+void XM7903_Task(void)
+{
+    // 1. 发送查询命令（每次调用都发）
+    BSP_XM7903_SendQuery();
+    
+    // 2. 启动 DMA 接收（准备收7字节）
+    BSP_XM7903_StartReceive();
+
+    // 3. 检查是否已收到响应（可能是上次查询的回复！）
+    if (xm7903_rx_ready) {
+        xm7903_rx_ready = false;
+        
+        const uint8_t *buf = BSP_XM7903_GetRxBuffer();//返回DMA接收到的数据
+        XM7903_Data_t data = XM7903_Parse(buf);
+        
+        if (data.valid) {
+            decibels = data.noise_db;
+            decibels_valid = true;
+        } else {
+            decibels_valid = false;
+        }
+    }else{
+		decibels_valid = false;//连相应都没有，自然没有合法数据，不加这条，上次合法下次不合法的话，decibels_valid始终为true
+	}
+    // 注意：如果本次发送后还没收到回复，下次调用时会再次发送（覆盖上一次）
 }
 
 /**
@@ -303,8 +349,8 @@ static TaskComps_t TaskComps[] = {
     // 蜂鸣器驱动任务：每 Buzzer_Buzz_INTERVAL_MS ms 执行一次 Buzzer_Turn
     {0, Buzzer_Buzz_INTERVAL_MS, Buzzer_Buzz_INTERVAL_MS, Buzzer_Turn},
 
-    // 噪音传感器数据包发送任务：每 Get_Noise_Data_INTERVAL_MS ms 执行一次 XM7903_SendPacket
-    {0, Get_Noise_Data_INTERVAL_MS, Get_Noise_Data_INTERVAL_MS, XM7903_SendPacket},
+    // 噪音传感器数据包发送任务：每 Get_Noise_Data_INTERVAL_MS ms 执行一次 XM7903_Task
+    {0, Get_Noise_Data_INTERVAL_MS, Get_Noise_Data_INTERVAL_MS, XM7903_Task},
 
     // 实时时钟读取任务：每 Read_Time_INTERVAL_MS ms 执行一次 MyRTC_ReadTime
     {0, Read_Time_INTERVAL_MS, Read_Time_INTERVAL_MS, MyRTC_ReadTime},
@@ -313,7 +359,7 @@ static TaskComps_t TaskComps[] = {
     {0, Dust_MAX_WAIT_MS, Dust_MAX_WAIT_MS, Dust_Data_Error},
 
     // 噪音数据错误处理任务：等待 Noise_MAX_WAIT_MS ms 后触发 NOise_Data_Error
-    {0, Noise_MAX_WAIT_MS, Noise_MAX_WAIT_MS, NOise_Data_Error},
+    {0, Noise_MAX_WAIT_MS, Noise_MAX_WAIT_MS, Noise_Data_Error},
 
     // 报警信息写入任务：每 ALARM_WRITE_INTERVAL_MS ms 执行一次 Write_Warning_Meg
     {0, ALARM_WRITE_INTERVAL_MS, ALARM_WRITE_INTERVAL_MS, Write_Warning_Meg}
@@ -341,7 +387,7 @@ void TaskSchedule(void) {
              * 粉尘错误任务特殊处理：
              * 若DMA标志位被置位（表示已成功收到数据），则重置计时器，不触发错误任务
              */
-            if (TaskComps[i].pTaskFunc == Dust_Data_Error && dma_C15_flag == true) {
+            if (TaskComps[i].pTaskFunc == Dust_Data_Error && pms7003_rx_ready) {
                 TaskComps[i].TimCount = TaskComps[i].TimeRload; // 正常情况下重置计时器
             }
 
@@ -349,7 +395,7 @@ void TaskSchedule(void) {
              * 噪音错误任务特殊处理：
              * 若未检测到噪音错误标志，则重置计时器，不触发错误任务
              */
-            if (TaskComps[i].pTaskFunc == NOise_Data_Error && Noise_Data_Error_Flag == false) {
+            if (TaskComps[i].pTaskFunc == Noise_Data_Error && decibels_valid) {
                 TaskComps[i].TimCount = TaskComps[i].TimeRload; // 正常情况下重置计时器
             }
 
@@ -485,12 +531,13 @@ void Handle_Alarm(void) {
 void Initialize_Hardware(void) {
     OLED_Init();//OLED屏初始化，与数据显示有关
     Timer2_Init();//定时2初始化，与任务调度有关
-    PMS7003_Init();//扬尘传感器初始化
     Store_Init();//FLASH初始化，便于后续存储阈值与独立看门狗次数
     Alarm_Init();//警报初始化
-    Usart1_Init(9600);
+//    Usart1_Init(9600);
+	BSP_PMS7003_Init();//扬尘传感器初始化
+	BSP_XM7903_Init();//噪音传感器初始化
     Usart2_Init(115200);
-	Usart3_Init(9600);   
+//	Usart3_Init(9600);   
 	
 }
 
@@ -594,21 +641,8 @@ void Initialize_System(void) {
     \* *************************************************************************** */
     // 建立与OneNET平台的MQTT连接
     retry_count = 0; 
-    while (retry_count < MAX_RETRY_COUNT) {	
-		{		//test OLED LOGO
-				OLED_ClearArea(66, 0, 127-65, 63);
-				OLED_ShowString(66, 16, "Test0", OLED_7X12_HALF);
-				OLED_Update();
-				Delay_s(2);
-		}		
-        unsigned char errorCode = OneNet_DevLink(); 
-		
-		{		//test OLED LOGO
-				OLED_ClearArea(66, 0, 127-65, 63);
-				OLED_ShowString(66, 16, "Test1", OLED_7X12_HALF);
-				OLED_Update();
-				Delay_s(2);
-		}		
+    while (retry_count < MAX_RETRY_COUNT) {			
+        unsigned char errorCode = OneNet_DevLink(); 		
         if (errorCode == 0) {
             // 连接成功，跳出重试循环
             break;
@@ -664,13 +698,8 @@ void Initialize_System(void) {
     OLED_ShowChinese(66, 16, "网络初始化", OLED_12X12_FULL);
     OLED_ShowChinese(66, 32, "完毕！即将", OLED_12X12_FULL);
     OLED_ShowChinese(66, 48, "进入系统", OLED_12X12_FULL);
-    OLED_Update();    
-    Delay_s(1);
-	OLED_Clear();
-	OLED_ShowString(66, 16, "Test2", OLED_7X12_HALF);
-    OLED_Update();    
+    OLED_Update();       
     Delay_s(2);	
-	
     OLED_Clear();    
     
     /* *************************************************************************** *\
@@ -690,34 +719,38 @@ void Initialize_System(void) {
  * 该函数用于从串口接收噪音传感器数据包并解析出噪音值。
  * 若数据异常或未接收到完整数据包，则设置错误标志位 Noise_Data_Error_Flag。
  */
-void Get_dBA(void) {
-    if (Serial_GetRxFlag() == 1) { // 如果接收到完整数据包
-        decibels = (uint16_t)roundf(Get_Nosie_Data()); // 获取原始噪音数据并四舍五入取整
+//void Get_dBA(void) {
+//    if (Serial_GetRxFlag() == 1) { // 如果接收到完整数据包
+//        decibels = (uint16_t)roundf(Get_Nosie_Data()); // 获取原始噪音数据并四舍五入取整
 
-        // 如果返回的噪音值为0，表示数据异常（如CRC校验失败等），设置错误标志
-        if (decibels == 0) {
-            Noise_Data_Error_Flag = true; // 数据异常标志置为真
-        } else {
-            Noise_Data_Error_Flag = false; // 数据正常，清除错误标志
-        }
-    } else {
-        // 未接收到有效数据包，设置错误标志
-        Noise_Data_Error_Flag = true;
-    }
-}
+//        // 如果返回的噪音值为0，表示数据异常（如CRC校验失败等），设置错误标志
+//        if (decibels == 0) {
+//            Noise_Data_Error_Flag = true; // 数据异常标志置为真
+//        } else {
+//            Noise_Data_Error_Flag = false; // 数据正常，清除错误标志
+//        }
+//    } else {
+//        // 未接收到有效数据包，设置错误标志
+//        Noise_Data_Error_Flag = true;
+//    }
+//}
 int main(){
 	Initialize_Hardware();
 	ReadStoreErrorTime();
 	Check_Reset_Way();//检查复位方式，若是看门狗复位，复位次数加一并储存到FLASH中	    
 	Initialize_System();
+	//此分组配置在整个工程中仅需调用一次
+    //若有多个中断，可以把此代码放在main函数内，while循环之前
+	//若调用多次配置分组的代码，则后执行的配置会覆盖先执行的配置
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 全局唯一调用点
+
+	
 	OLED_UI_Init(&MainMenuPage);//UI初始化
 	MyRTC_Init();//系统时间设置
 	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
 	PM_Data.pm2_5_env = 100;//静态警报测试
-	decibels = 40;
-	PM2_5_ENV = PM_Data.pm2_5_env;
 	while(1){
-		Get_dBA();//获取噪音数据
+//		Get_dBA();//获取噪音数据
 		DMATaskHandler();//获取扬尘数据
         Handle_Alarm();// 处理报警条件
 		OLED_UI_MainLoop();	//显示刷新

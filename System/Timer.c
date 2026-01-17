@@ -54,7 +54,6 @@ void Timer2_Init(void)
 	因为此处需要定时器触发中断而并非事件，另外这个函数是用来使能中断的，即“告诉”TIM2，你可以进行中断了
 	*/
 	
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 /*
 	凡是中断都得由NVIC管理，所以这里它又出现了
 	其配置都是有套路的，基本和GPIO的配置差不多，
