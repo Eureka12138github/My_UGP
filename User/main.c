@@ -713,27 +713,6 @@ void Initialize_System(void) {
     ReadStoreWarningTime(); 
 }
 
-/**
- * @brief 获取当前环境噪音值（单位：dBA）
- *
- * 该函数用于从串口接收噪音传感器数据包并解析出噪音值。
- * 若数据异常或未接收到完整数据包，则设置错误标志位 Noise_Data_Error_Flag。
- */
-//void Get_dBA(void) {
-//    if (Serial_GetRxFlag() == 1) { // 如果接收到完整数据包
-//        decibels = (uint16_t)roundf(Get_Nosie_Data()); // 获取原始噪音数据并四舍五入取整
-
-//        // 如果返回的噪音值为0，表示数据异常（如CRC校验失败等），设置错误标志
-//        if (decibels == 0) {
-//            Noise_Data_Error_Flag = true; // 数据异常标志置为真
-//        } else {
-//            Noise_Data_Error_Flag = false; // 数据正常，清除错误标志
-//        }
-//    } else {
-//        // 未接收到有效数据包，设置错误标志
-//        Noise_Data_Error_Flag = true;
-//    }
-//}
 int main(){
 	Initialize_Hardware();
 	ReadStoreErrorTime();
@@ -750,7 +729,6 @@ int main(){
 	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
 	PM_Data.pm2_5_env = 100;//静态警报测试
 	while(1){
-//		Get_dBA();//获取噪音数据
 		DMATaskHandler();//获取扬尘数据
         Handle_Alarm();// 处理报警条件
 		OLED_UI_MainLoop();	//显示刷新

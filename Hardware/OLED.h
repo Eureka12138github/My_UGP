@@ -18,7 +18,6 @@ extern "C" {
 /*此参数值不仅用于判断，而且用于计算横向字符偏移，默认值为字体像素宽度*/
 #define OLED_8X16_HALF				(8)
 #define OLED_7X12_HALF				(7)				
-#define OLED_6X8_HALF 			    (6)
 
 /*全角大小参数取值*/
 #define OLED_8X8_FULL					(8)

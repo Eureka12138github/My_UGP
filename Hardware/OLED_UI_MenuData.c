@@ -454,24 +454,6 @@ MenuItem WarningTypeExplanationItems[] = {
 	{.General_item_text = NULL},/*最后一项的General_item_text置为NULL，表示该项为分割线*/
 };
 
-//MenuItem SmallAreaMenuItems[] = {
-//	{.General_item_text = "中文文本",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "English Text",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "1234567890",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "abcdefghijklmnopqrstuvwxyz",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = ",.[]!@#$+-/^&*()",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "中文文本",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "English Text",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "1234567890",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "abcdefghijklmnopqrstuvwxyz",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = ",.[]!@#$+-/^&*()",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = "[返回]",.General_callback = OLED_UI_Back,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-//	{.General_item_text = NULL},/*最后一项的General_item_text置为NULL，表示该项为分割线*/
-//};
-
-
 
 MenuPage MainMenuPage = {
 	//通用属性，必填
@@ -553,6 +535,7 @@ MenuPage AboutThisSystemPage = {
 	.List_StartPointY = 2,                        //列表起始点Y坐标
 
 };
+
 MenuPage MoreMenuPage = {
 	//通用属性，必填
 	.General_MenuType = MENU_TYPE_LIST,  		 //菜单类型为列表类型
@@ -573,6 +556,7 @@ MenuPage MoreMenuPage = {
 	.List_StartPointY = 2,                        //列表起始点Y坐标
 
 };
+
 MenuPage MoreDustDataPage = {
 	//通用属性，必填
 	.General_MenuType = MENU_TYPE_LIST,  		 //菜单类型为列表类型
@@ -593,6 +577,7 @@ MenuPage MoreDustDataPage = {
 	.List_StartPointY = 2,                        //列表起始点Y坐标
 
 };
+
 MenuPage DataExplanationPage = {
 	//通用属性，必填
 	.General_MenuType = MENU_TYPE_LIST,  		 //菜单类型为列表类型
@@ -613,10 +598,6 @@ MenuPage DataExplanationPage = {
 	.List_StartPointY = 2,                        //列表起始点Y坐标
 
 };
-
-
-
-
 
 MenuPage ErrorMenuPage = {
 	//通用属性，必填
@@ -680,6 +661,7 @@ MenuPage ErrorTypeExplanationPage = {
 	.List_StartPointY = 2,                        //列表起始点Y坐标
 
 };
+
 MenuPage WarningTypeExplanationPage = {
 	//通用属性，必填
 	.General_MenuType = MENU_TYPE_LIST,  		 //菜单类型为列表类型
@@ -700,24 +682,5 @@ MenuPage WarningTypeExplanationPage = {
 	.List_StartPointY = 2,                        //列表起始点Y坐标
 
 };
-//MenuPage SmallAreaMenuPage = {
-//	//通用属性，必填
-//	.General_MenuType = MENU_TYPE_LIST,  		 //菜单类型为列表类型
-//	.General_CursorStyle = REVERSE_ROUNDRECTANGLE,	 //光标类型为圆角矩形
-//	.General_FontSize = OLED_UI_FONT_12,			//字高
-//	.General_ParentMenuPage = &MoreMenuPage,		 //父菜单为主菜单
-//	.General_LineSpace = 6,						//行间距 单位：像素
-//	.General_MoveStyle = UNLINEAR,				//移动方式为非线性曲线动画
-//	.General_MovingSpeed = SPEED,					//动画移动速度(此值根据实际效果调整)
-//	.General_ShowAuxiliaryFunction = NULL,		 //显示辅助函数
-//	.General_MenuItems = SmallAreaMenuItems,		 //菜单项内容数组
 
-//	//特殊属性，根据.General_MenuType的类型选择
-//	.List_MenuArea = {34, 20, 60, 36},			 //列表显示区域
-//	.List_IfDrawFrame = true,					 //是否显示边框
-//	.List_IfDrawLinePerfix = true,				 //是否显示行前缀
-//	.List_StartPointX = 4,                        //列表起始点X坐标
-//	.List_StartPointY = 2,                        //列表起始点Y坐标
-
-//};
 

@@ -33,7 +33,6 @@ typedef struct
 
 /*ASCII字模数据声明*/
 extern const uint8_t OLED_F7x12[][14];
-extern const uint8_t OLED_F6x8[][6];
 
 /*汉字字模数据声明*/
 
@@ -41,9 +40,6 @@ extern const ChineseCell16x16_t OLED_CF16x16[];
 extern const ChineseCell12x12_t OLED_CF12x12[];  // 声明12x12字模数组
 /*图像数据声明*/
 extern const uint8_t Arrow_Down[];
-extern const uint8_t Arrow_Up[];
-extern const uint8_t Arrow_Right[];
-extern const uint8_t Arrow_Left[];
 extern const uint8_t UnKnown[];
 extern const uint8_t Image_setings[];
 extern const uint8_t Image_window[];
@@ -62,7 +58,6 @@ extern const uint8_t Image_wechat_64[];
 extern const uint8_t Image_alipay_64[];
 extern const uint8_t Image_night_64[];
 extern const uint8_t Image_more_64[];
-extern const uint8_t OLED_UI_LOGO[];
 extern const uint8_t OLED_UI_LOGOTEXT[];
 extern const uint8_t OLED_UI_LOGOTEXT64[];
 extern const uint8_t OLED_UI_LOGOGithub[];

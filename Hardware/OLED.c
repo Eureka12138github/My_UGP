@@ -307,23 +307,16 @@ void OLED_ShowImage(int16_t X, int16_t Y, uint16_t Width, uint16_t Height, const
   * 参    数：Y 指定字符左上角的纵坐标，范围：负数~OLED_HEIGHT-1
   * 参    数：Char 指定要显示的字符，范围：ASCII码可见字符
   * 参    数：FontSize 指定字体大小
-  *           范围：OLED_8X16_HALF		宽8像素，高16像素
-  *                 OLED_6X8_HALF		宽6像素，高8像素
-  *                  OLED_7X12_HALF		宽7像素，高12像素
-  *                 OLED_10X20_HALF		宽10像素，高20像素
+  *           范围：OLED_7X12_HALF		宽7像素，高12像素                
   * 返 回 值：无
   * 说    明：调用此函数后，要想真正地呈现在屏幕上，还需调用更新函数
   */
 void OLED_ShowChar(int16_t X, int16_t Y, char Char, uint8_t FontSize)
 {
- if(FontSize == OLED_6X8_HALF)	//字体为宽6像素，高8像素
+
+	if(FontSize == OLED_7X12_HALF)	//字体为宽7像素，高12像素
 	{
-		/*将ASCII字模库OLED_F6x8的指定数据以6*8的图像格式显示*/
-		OLED_ShowImage(X, Y, 6, 8, OLED_F6x8[Char - ' ']);
-	}
-	else if(FontSize == OLED_7X12_HALF)	//字体为宽6像素，高8像素
-	{
-		/*将ASCII字模库OLED_F6x8的指定数据以6*8的图像格式显示*/
+		/*将ASCII字模库OLED_F7x12的指定数据以7*12的图像格式显示*/
 		OLED_ShowImage(X, Y, 7, 12, OLED_F7x12[Char - ' ']);
 	}
 
@@ -755,15 +748,9 @@ void OLED_ShowCharArea(int16_t RangeX,int16_t RangeY,int16_t RangeWidth,int16_t 
 {
 	
 
-if(FontSize == OLED_6X8_HALF)	//字体为宽6像素，高8像素
+	if(FontSize == OLED_7X12_HALF)	//字体为宽7像素，高12像素
 	{
-		/*将ASCII字模库OLED_F6x8的指定数据以6*8的图像格式显示*/
-		
-		OLED_ShowImageArea(X, Y, 6, 8, RangeX, RangeY, RangeWidth, RangeHeight, OLED_F6x8[Char - ' ']);
-	}
-	else if(FontSize == OLED_7X12_HALF)	//字体为宽6像素，高8像素
-	{
-		/*将ASCII字模库OLED_F7X12的指定数据以6*8的图像格式显示*/
+		/*将ASCII字模库OLED_F7X12的指定数据以7*12的图像格式显示*/
 		OLED_ShowImageArea(X, Y, 7, 12, RangeX, RangeY, RangeWidth, RangeHeight, OLED_F7x12[Char - ' ']);
 	}
 
