@@ -322,7 +322,7 @@ MenuItem AboutThisSystemuItems[] = {
 	{.General_item_text = "-[Author:]",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
 	{.General_item_text = " Eureka",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
 	{.General_item_text = "-[Adress:]",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
-	{.General_item_text = " https://github.com/Eureka12138github/OLEDMENU",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
+	{.General_item_text = " https://github.com/Eureka12138github/My_UGP",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
 	{.General_item_text = "-[MCU:]",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
 	{.General_item_text = " STM32F103C8T6",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
 	{.General_item_text = " RAM:20KB",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
