@@ -1,4 +1,4 @@
-//硬件驱动
+// PMS7003 硬件驱动
 #include "bsp_pms7003.h"
 // PMS7003 数据接收流程说明：
 // 1. 调用 BSP_PMS7003_Init() 完成 USART、DMA 及 GPIO 初始化；

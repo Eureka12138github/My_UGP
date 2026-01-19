@@ -4,8 +4,7 @@
 
 */
 
-#include "bsp_oled.h"
-#include "bsp_config.h"  
+#include "bsp_oled.h" 
 
 uint8_t OLED_DisplayBuf[64/8][128];
 bool OLED_ColorMode = true;

@@ -1,8 +1,14 @@
 // BSP/stm32f103c8t6_minidev/bsp_config.h
 #ifndef BSP_CONFIG_H
 #define BSP_CONFIG_H
+#include "stm32f10x.h"       
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdbool.h>
 
-// OLED 引脚定义（根据你的实际接线）
+// OLED 引脚定义
 #define OLED_SCL_PIN   GPIO_Pin_8
 #define OLED_SDA_PIN   GPIO_Pin_9
 #define OLED_GPIO_PORT GPIOB
@@ -11,10 +17,7 @@
 // OLED I2C 地址（通常 0x78）
 #define OLED_I2C_ADDR  0x78
 
-#ifndef __BSP_CONFIG_H
-#define __BSP_CONFIG_H
 
-#include "stm32f10x.h"
 
 /* ========== PMS7003 通信接口 ========== */
 #define PMS7003_USART               USART1
@@ -30,7 +33,7 @@
 #define PMS7003_EN_PIN              GPIO_Pin_6     // PM_SET (使能)
 #define PMS7003_RST_PIN             GPIO_Pin_5     // PM_RESET
 
-/* ========== PMS7003 DMA 配置 ========== */
+/* ========== PMS7003 DMA 配置（改通道必须改对应的中断函数名称） ========== */
 #define PMS7003_DMA_CHANNEL         DMA1_Channel5
 #define PMS7003_DMA_IRQ             DMA1_Channel5_IRQn
 
@@ -50,17 +53,23 @@
 #define BSP_ESP8266_RST_PORT            GPIOA
 #define BSP_ESP8266_BAUDRATE            115200U
 
-/* ==================== USART3 - Debug / Other ==================== */
-#define BSP_DEBUG_USART                 USART3
-#define BSP_DEBUG_USART_CLK             RCC_APB1Periph_USART3
-#define BSP_DEBUG_GPIO_CLK              RCC_APB2Periph_GPIOB
-#define BSP_DEBUG_TX_PIN                GPIO_Pin_10
-#define BSP_DEBUG_TX_PORT               GPIOB
-#define BSP_DEBUG_RX_PIN                GPIO_Pin_11
-#define BSP_DEBUG_RX_PORT               GPIOB
-#define BSP_DEBUG_BAUDRATE              115200U
+// === XM7903 硬件连接配置 ===
+#define XM7903_USART               USART3
+#define XM7903_USART_CLK           RCC_APB1Periph_USART3
+
+#define XM7903_GPIO_PORT           GPIOB
+#define XM7903_GPIO_CLK            RCC_APB2Periph_GPIOB
+#define XM7903_TX_PIN              GPIO_Pin_10
+#define XM7903_RX_PIN              GPIO_Pin_11
+
+//如果改了DMA通道，对应的中断函数也必须改，就是bsp_xm7903.c中的 DMA1_Channel3_IRQHandler
+#define XM7903_DMA_CHANNEL         DMA1_Channel3
+#define XM7903_DMA_CLK             RCC_AHBPeriph_DMA1
+#define XM7903_DMA_TC_IT           DMA1_IT_TC3
+#define XM7903_DMA_IRQn            DMA1_Channel3_IRQn
+
+#define XM7903_BAUDRATE            9600
 
 #endif
 
-#endif
 

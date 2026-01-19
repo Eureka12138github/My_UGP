@@ -1,9 +1,22 @@
-// xm7903.c
+// XM7903 数据解析
 #include "xm7903.h"
 
-// 假设你已有 crc16 函数，原型如下：
-// uint16_t crc16(const uint8_t *data, uint16_t len);
-
+/**
+ * @brief 解析XM7903传感器返回的MODBUS数据帧
+ * 
+ * 对接收到的7字节MODBUS RTU数据进行完整性校验(CRC)，
+ * 并提取噪声测量值，转换为dB单位
+ * 
+ * @param frame 指向7字节MODBUS数据帧的指针
+ *              格式: [地址][功能码][字节数][高字节][低字节][CRC高][CRC低]
+ * 
+ * @return XM7903_Data_t 包含解析结果的结构体
+ *         - valid: 数据有效性标志
+ *         - noise_db: 解析出的噪声值(单位dB)，仅当valid=true时有效
+ * 
+ * @note 输入数据帧必须为7字节MODBUS RTU格式
+ *       数据转换公式: 真实值 = 寄存器值 / 10
+ */
 XM7903_Data_t XM7903_Parse(const uint8_t *frame)
 {
     XM7903_Data_t result = {0};
@@ -35,4 +48,3 @@ XM7903_Data_t XM7903_Parse(const uint8_t *frame)
 
     return result;
 }
-
