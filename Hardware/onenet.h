@@ -29,6 +29,8 @@
 //OneNet配置文件
 #include "project_secrets.h"
 
+#include "debug_config.h"
+
 _Bool OneNET_RegisterDevice(void);
 
 unsigned char OneNet_DevLink(void);

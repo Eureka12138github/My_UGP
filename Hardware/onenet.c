@@ -457,95 +457,51 @@ int8_t OneNet_SendData(void)
 {
     MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};
     char payloadBuf[256];
-    int8_t ret = -3; // 默认错误：无效数据长度
+    int8_t ret = -3;
     int sentBytes = 0;
     uint16_t body_len = 0;
 
-    UsartPrintf(USART_DEBUG, "\r\n[DEBUG] === OneNet_SendData START ===\r\n");
-
-    // 初始化阶段
     memset(payloadBuf, 0, sizeof(payloadBuf));
-    
-    /* 数据准备阶段 */
     body_len = OneNet_FillBuf(payloadBuf);
-    UsartPrintf(USART_DEBUG, "[DEBUG] OneNet_FillBuf() returned len=%u\r\n", body_len);
-    
+
+    ONENET_LOG("Payload (%u bytes): %s", body_len, payloadBuf);
+
     if (body_len == 0 || body_len >= sizeof(payloadBuf)) {
-        UsartPrintf(USART_DEBUG, "[ERROR] Invalid payload len: %u (max allowed: %u)\r\n", 
-                    body_len, (unsigned int)sizeof(payloadBuf) - 1);
+        ONENET_LOG("ERROR: Invalid payload length: %u", body_len);
         return -3;
     }
 
-    // 打印实际 payload 内容（可读部分）
-    UsartPrintf(USART_DEBUG, "[DEBUG] Payload content: %s\r\n", payloadBuf);
-
-    /* 数据封包阶段 */
-    UsartPrintf(USART_DEBUG, "[DEBUG] Calling MQTT_PacketSaveData(PROID=\"%s\", DEV=\"%s\", len=%u)\r\n",
-                ONENET_PROID, ONENET_DEVICE_NAME, body_len);
-                
     if (MQTT_PacketSaveData(ONENET_PROID, ONENET_DEVICE_NAME, body_len, NULL, &mqttPacket) != 0) {
-        UsartPrintf(USART_DEBUG, "[ERROR] MQTT_PacketSaveData failed!\r\n");
+        ONENET_LOG("ERROR: MQTT packet creation failed!");
         return -1;
     }
 
-    UsartPrintf(USART_DEBUG, "[DEBUG] MQTT packet header created. Buffer size=%u, current len=%u\r\n",
-                mqttPacket._size, mqttPacket._len);
-
-    /* 数据填充阶段 */
+    // 填充 payload 到 MQTT 包
     for (uint16_t i = 0; i < body_len; i++) {
         if (mqttPacket._len >= mqttPacket._size) {
-            UsartPrintf(USART_DEBUG, "[ERROR] Buffer overflow at i=%u! Packet len=%u, size=%u\r\n",
-                        i, mqttPacket._len, mqttPacket._size);
+            ONENET_LOG("ERROR: Buffer overflow during payload fill!");
             ret = -4;
             goto cleanup;
         }
         mqttPacket._data[mqttPacket._len++] = payloadBuf[i];
     }
 
-    UsartPrintf(USART_DEBUG, "[DEBUG] Full packet length after payload fill: %u bytes\r\n", mqttPacket._len);
-
-    // 【关键】打印完整发送内容（十六进制 + 可读字符）
-    UsartPrintf(USART_DEBUG, "[DEBUG] Full packet (first 128 bytes in hex):\r\n");
-    for (int i = 0; i < mqttPacket._len && i < 128; i++) {
-        if (i % 16 == 0) UsartPrintf(USART_DEBUG, "\r\n");
-        UsartPrintf(USART_DEBUG, "%02X ", mqttPacket._data[i]);
-    }
-    UsartPrintf(USART_DEBUG, "\r\n");
-
-    // 打印可读部分（注意：可能含二进制，用 . 代替不可见字符）
-    UsartPrintf(USART_DEBUG, "[DEBUG] Printable part of packet:\r\n");
-    for (int i = 0; i < mqttPacket._len && i < 200; i++) {
-        char c = mqttPacket._data[i];
-        if (c >= 32 && c < 127) {
-            UsartPrintf(USART_DEBUG, "%c", c);
-        } else {
-            UsartPrintf(USART_DEBUG, ".");
-        }
-    }
-    UsartPrintf(USART_DEBUG, "\r\n");
-
-    /* 数据发送阶段 */
-    UsartPrintf(USART_DEBUG, "[DEBUG] Calling ESP8266_SendData(%p, %u)\r\n", 
-                mqttPacket._data, mqttPacket._len);
-                
+    // 发送数据
     sentBytes = ESP8266_SendData(mqttPacket._data, mqttPacket._len);
-    UsartPrintf(USART_DEBUG, "[DEBUG] ESP8266_SendData returned: %d\r\n", sentBytes);
+    ONENET_LOG("Sent %d / %u bytes", sentBytes, mqttPacket._len);
 
     if (sentBytes != mqttPacket._len) {
-        UsartPrintf(USART_DEBUG, "[ERROR] Sent only %d out of %u bytes!\r\n", 
-                    sentBytes, mqttPacket._len);
+        ONENET_LOG("ERROR: Incomplete send!");
         ret = -2;
         goto cleanup;
     }
 
-    UsartPrintf(USART_DEBUG, "[INFO] Data sent successfully (%u bytes)!\r\n", mqttPacket._len);
-    ret = 0;
+    ret = 0; // success
 
 cleanup:
     if (mqttPacket._data) {
         MQTT_DeleteBuffer(&mqttPacket);
     }
-    UsartPrintf(USART_DEBUG, "[DEBUG] === OneNet_SendData END (ret=%d) ===\r\n", ret);
     return ret;
 }
 

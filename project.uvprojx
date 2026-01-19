@@ -337,7 +337,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\BSP\stm32f103c8t6_minidev</IncludePath>
+              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\BSP\stm32f103c8t6_minidev;.\Config</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -980,6 +980,16 @@
               <FileName>cJSON.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\CJSON\cJSON.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Config</GroupName>
+          <Files>
+            <File>
+              <FileName>debug_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Config\debug_config.h</FilePath>
             </File>
           </Files>
         </Group>
