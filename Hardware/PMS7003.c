@@ -1,6 +1,19 @@
 #include "PMS7003.h"
 #define PARSE_DATA(packet, index) \
     ((uint16_t)((packet[index] << 8) | packet[index + 1]))
+	
+// 典型数据获取伪代码（由主循环或任务周期调用）：
+// ┌───────────────────────────────────────┐
+// │ if (pms7003_rx_ready) {               │
+// │     pms7003_rx_ready = false;         │
+// │     buf = BSP_PMS7003_GetRxBuffer();  │
+// │     data = PMS7003_Parse(buf);        │
+// │     if (data.valid) {                 │
+// │        use(data.pm25, data.pm10, ...);│
+// │     }                                 │
+// │ }                                     │
+// └───────────────────────────────────────┘	
+	
 //注：传感器大约每隔1秒通过串口向MCU发送一次数据
 // 数据索引枚举     
 typedef enum {

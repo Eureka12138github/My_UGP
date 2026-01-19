@@ -138,7 +138,7 @@ void ErrorType(u8 Type) {
     u8 LogIndex = 0;
     
     // 查找下一个可用的存储位置
-    // 按照您的思路，检查 errorshowflag 标志来确定写入位置
+    // 检查 errorshowflag 标志来确定写入位置
     for(u8 i = 0; i < ERROR_TIME_ARRAY_SIZE; i++) {
         if(!ErrorTime[i].errorshowflag) {
             LogIndex = i;

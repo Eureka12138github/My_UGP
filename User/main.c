@@ -43,7 +43,6 @@ bool Dust_Alarm = false;
 bool Warning_Show_Flag1 = true;
 bool Warning_Show_Flag2 = true;
 bool Warning_Show_Flag3 = true;
-bool decibels_valid = true;
 #if 0
 需要注释的内容
 #endif
@@ -287,44 +286,6 @@ void DMATaskHandler(void) {
 
 
 
-
-/**
- * @brief XM7903 噪声传感器任务函数
- * 
- * 被任务调度器周期性调用（例如每 1000ms）
- * 功能：
- *   - 发送 MODBUS 查询命令
- *   - 启动 DMA 接收
- *   - 检查是否已收到有效响应，并更新全局数据
-*   （注：如果传感器响应较慢还需考虑加入“忙”标志位，当目前XM7903完全能够在500ms间隔内进行相应，所以就不加了）
- */
-void XM7903_Task(void)
-{
-    // 1. 发送查询命令（每次调用都发）
-    BSP_XM7903_SendQuery();
-    
-    // 2. 启动 DMA 接收（准备收7字节）
-    BSP_XM7903_StartReceive();
-
-    // 3. 检查是否已收到响应（可能是上次查询的回复！）
-    if (xm7903_rx_ready) {
-        xm7903_rx_ready = false;
-        
-        const uint8_t *buf = BSP_XM7903_GetRxBuffer();//返回DMA接收到的数据
-        XM7903_Data_t data = XM7903_Parse(buf);
-        
-        if (data.valid) {
-            decibels = data.noise_db;
-            decibels_valid = true;
-        } else {
-            decibels_valid = false;
-        }
-    }else{
-		decibels_valid = false;//连相应都没有，自然没有合法数据，不加这条，上次合法下次不合法的话，decibels_valid始终为true
-	}
-    // 注意：如果本次发送后还没收到回复，下次调用时会再次发送（覆盖上一次）
-}
-
 /**
  * @brief 定义系统中所有周期性任务的任务表
  *
@@ -379,7 +340,7 @@ static TaskComps_t TaskComps[] = {
  * - LED 和蜂鸣器报警任务根据当前报警状态决定是否启用
  */
 void TaskSchedule(void) {
-    for (u8 i = 0; i < TASK_NUM_MAX; i++) {
+    for (u8 i = 0; i < TASK_NUM_MAX; i++) {     
         if (TaskComps[i].TimCount) {
             TaskComps[i].TimCount--;  // 时间片递减
 
@@ -395,7 +356,7 @@ void TaskSchedule(void) {
              * 噪音错误任务特殊处理：
              * 若未检测到噪音错误标志，则重置计时器，不触发错误任务
              */
-            if (TaskComps[i].pTaskFunc == Noise_Data_Error && decibels_valid) {
+            if (TaskComps[i].pTaskFunc == Noise_Data_Error && g_xm7903_data.valid) {
                 TaskComps[i].TimCount = TaskComps[i].TimeRload; // 正常情况下重置计时器
             }
 
@@ -729,6 +690,7 @@ int main(){
 	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
 	PM_Data.pm2_5_env = 100;//静态警报测试
 	while(1){
+		decibels = g_xm7903_data.noise_db;
 		DMATaskHandler();//获取扬尘数据
         Handle_Alarm();// 处理报警条件
 		OLED_UI_MainLoop();	//显示刷新

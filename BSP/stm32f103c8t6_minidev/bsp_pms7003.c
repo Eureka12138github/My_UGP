@@ -8,7 +8,6 @@
 //
 // 本文件仅负责硬件初始化与数据接收，不涉及协议解析。
 
-
 static uint8_t s_RxBuffer[PMS7003_PACKET_LEN] __attribute__((aligned(4)));// DMA 接收缓冲区
 volatile bool pms7003_rx_ready = false;//接收完成标志位
 
