@@ -137,7 +137,7 @@ void Data_Send(void) {
             // 2. 获取当前时间
             // 3. 存储错误信息到FLASH中
             ErrorType(ENV_COMM_DATA_TRANSMISSION_FAILURE);
-            Delay_s(3); // 延时3秒，即将看门狗复位
+//            Delay_s(3); // 延时3秒，即将看门狗复位
         }
     }
 }
@@ -204,8 +204,8 @@ void Dust_Data_Read(void) {
  * 并进行延时，即将系统复位
  */
 void Dust_Data_Error(void){
-	ErrorType(ENV_SENSOR_DUST_ANOMALY);
-	Delay_s(3);//加上这句就会来不及喂狗，会看门狗复位，
+//	ErrorType(ENV_SENSOR_DUST_ANOMALY);
+//	Delay_s(3);//加上这句就会来不及喂狗，会看门狗复位，
 	//现在准备只输出错误信息，但不复位
 }
 
@@ -240,8 +240,8 @@ void Write_Warning_Meg(void) {
  * 并进行延时，即将系统复位
  */
 void Noise_Data_Error(void){
-	ErrorType(ENV_SENSOR_NOISE_ANOMALY);
-	Delay_s(3);
+//	ErrorType(ENV_SENSOR_NOISE_ANOMALY);
+//	Delay_s(3);
 }
 		
 /**
@@ -495,10 +495,10 @@ void Initialize_Hardware(void) {
     Store_Init();//FLASH初始化，便于后续存储阈值与独立看门狗次数
     Alarm_Init();//警报初始化
 //    Usart1_Init(9600);
-	BSP_PMS7003_Init();//扬尘传感器初始化
-	BSP_XM7903_Init();//噪音传感器初始化
+//	BSP_PMS7003_Init();//扬尘传感器初始化
+//	BSP_XM7903_Init();//噪音传感器初始化
     Usart2_Init(115200);
-//	Usart3_Init(9600);   
+	Usart3_Init(9600);   
 	
 }
 
@@ -689,8 +689,9 @@ int main(){
 	MyRTC_Init();//系统时间设置
 	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
 	PM_Data.pm2_5_env = 100;//静态警报测试
+	decibels = 67;	
 	while(1){
-		decibels = g_xm7903_data.noise_db;
+//		decibels = g_xm7903_data.noise_db;
 		DMATaskHandler();//获取扬尘数据
         Handle_Alarm();// 处理报警条件
 		OLED_UI_MainLoop();	//显示刷新
