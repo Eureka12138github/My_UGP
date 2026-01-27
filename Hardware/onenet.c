@@ -201,21 +201,20 @@ static unsigned char OneNET_Authorization(const char *ver,
 
 }
 
+
 //==========================================================
-//	函数名称：	OneNET_RegisterDevice
+//  ⚠️【已废弃】函数名称：OneNET_RegisterDevice
 //
-//	函数功能：	在产品中注册一个设备
+//  说明：
+//    - 此函数基于 OneNET 旧版 API（/mqtt/v1/devices/reg）
+//    - 存在硬编码、脆弱解析、安全风险等问题
+//    - **不适用于量产或正式项目**
+//    - 仅作历史参考，动态注册应通过新版 API + 安全设计实现
+//    - 当前项目采用【预注册设备】方案（devid/key 硬编码于配置）
 //
-//	入口参数：	access_key：访问密钥
-//				pro_id：产品ID
-//				serial：唯一设备号
-//				devid：保存返回的devid
-//				key：保存返回的key
-//
-//	返回参数：	0-成功		1-失败
-//
-//	说明：		
+//  替代方案：手动在 OneNET 控制台创建设备，使用固定凭证连接
 //==========================================================
+#if 0  // 废弃：动态注册功能（存在安全与兼容性问题）
 _Bool OneNET_RegisterDevice(void)
 {
 
@@ -287,105 +286,158 @@ _Bool OneNET_RegisterDevice(void)
 	return result;
 
 }
+#endif
 
-//==========================================================
-//	函数名称：	OneNet_DevLink
-//
-//	函数功能：	与onenet创建连接
-//
-//	入口参数：	无
-//
-//	返回参数：	0-成功	
-//              1-鉴权失败	
-//              2-MQTT包构造失败	
-//              3-等待响应超时	
-//              4-非CONNACK包	
-//              5-CONNACK数据包格式错误  // 依据: MQTT_UnPacketConnectAck返回1(长度字段错误)或255(标志位字段错误)
-//              6-协议版本不可接受      // 依据: MQTT协议CONNACK返回码1
-//              7-客户端标识符被拒绝    // 依据: MQTT协议CONNACK返回码2
-//              8-服务端不可用          // 依据: MQTT协议CONNACK返回码3
-//              9-用户名或密码错误      // 依据: MQTT协议CONNACK返回码4
-//              10-未授权连接           // 依据: MQTT协议CONNACK返回码5
-//              11-未知连接错误
-//
-//	说明：		与onenet平台建立连接
-//==========================================================
+/**
+ * @brief 与OneNET平台建立设备连接
+ * 
+ * 该函数实现设备与OneNET物联网平台的MQTT连接建立过程，
+ * 包括生成鉴权Token、构建CONNECT包、发送连接请求以及处理CONNACK响应。
+ * 
+ * @return unsigned char 连接结果状态码
+ *         - 0: 连接成功
+ *         - 1: 鉴权失败
+ *         - 2: MQTT包构造失败
+ *         - 3: 等待响应超时
+ *         - 4: 接收到非CONNACK包
+ *         - 5: CONNACK数据包格式错误
+ *         - 6: 协议版本不可接受
+ *         - 7: 客户端标识符被拒绝
+ *         - 8: 服务端不可用
+ *         - 9: 用户名或密码错误
+ *         - 10: 未授权连接
+ *         - 11: 未知连接错误
+ */
 unsigned char OneNet_DevLink(void)
 {
-	MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};	//协议包
-	unsigned char *dataPtr;
-	char authorization_buf[160];
-	unsigned char result = 1; // 默认为鉴权失败	
-	// 根据设备ID、设备秘钥、设备名称生成OneNET平台鉴权Token
-	if (OneNET_Authorization("2018-10-31", ONENET_PROID, 1956499200, ONENET_ACCESS_KEY, ONENET_DEVICE_NAME,
-		authorization_buf, sizeof(authorization_buf), 0) != 0) {
-		result = 1; // 鉴权Token生成失败
-		goto exit;
-	}
+    // MQTT数据包结构体，用于存储构建的CONNECT数据包
+    MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};
+    // 接收数据指针
+    unsigned char *dataPtr;
+    // 存储鉴权令牌的缓冲区
+    char authorization_buf[160];
+    // 返回结果，默认为鉴权失败
+    unsigned char result = 1;
+    // CONNACK返回码
+    unsigned char connack_code = 0;
 
-	// 构造MQTT CONNECT包
-	if(MQTT_PacketConnect(ONENET_PROID, authorization_buf, ONENET_DEVICE_NAME, 256, 1, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) != 0)
-	{
-		result = 2; // MQTT包构造失败
-		goto exit;
-	}
-	
-	// 发送数据到平台
-	ESP8266_SendData(mqttPacket._data, mqttPacket._len);
-	
-	// 等待平台响应
-	dataPtr = ESP8266_GetIPD(250);
-	if(dataPtr != NULL)
-	{
-		// 解析收到的数据包
-		if(MQTT_UnPacketRecv(dataPtr) == MQTT_PKT_CONNACK)
-		{
-			// 检查连接确认结果
-			unsigned char connack_code = MQTT_UnPacketConnectAck(dataPtr);
-			
-			switch(connack_code)
-			{
-				case 0:
-					result = 0; // 连接成功
-					break;
-				case 1:
-					result = 6; // 协议版本不可接受 (MQTT协议标准)
-					break;
-				case 2:
-					result = 7; // 客户端标识符被拒绝 (MQTT协议标准)
-					break;
-				case 3:
-					result = 8; // 服务端不可用 (MQTT协议标准)
-					break;
-				case 4:
-					result = 9; // 用户名或密码错误 (MQTT协议标准)
-					break;
-				case 5:
-					result = 10; // 未授权连接 (MQTT协议标准)
-					break;
-				case 255:
-					result = 5; // 数据包格式错误 (MQTT_UnPacketConnectAck实现)
-					break;
-				default:
-					result = 11; // 未知连接错误
-					break;
-			}
-		}
-		else
-		{
-			result = 4; // 接收到非CONNACK包
-		}
-	}
-	else
-	{
-		result = 3; // 等待响应超时
-	}
-	
+    // 记录连接开始日志
+    ONENET_LOG_CONN("Starting device connection to OneNET...");
+
+    // 步骤1: 生成鉴权Token
+    // 使用OneNET的标准鉴权算法生成连接所需的认证令牌
+    if (OneNET_Authorization("2018-10-31",      // API版本号
+                            ONENET_PROID,       // 产品ID
+                            1956499200,         // 时间戳（需根据实际情况调整）
+                            ONENET_ACCESS_KEY,  // 访问密钥
+                            ONENET_DEVICE_NAME, // 设备名称
+                            authorization_buf,  // 输出缓冲区
+                            sizeof(authorization_buf), // 缓冲区大小
+                            0) != 0) {         // 其他参数
+        ONENET_LOG_CONN("ERROR: Failed to generate authorization token");
+        result = 1;  // 设置错误码：鉴权失败
+        goto exit;   // 跳转到退出清理部分
+    }
+
+    ONENET_LOG_CONN("Authorization token generated successfully");
+
+    // 步骤2: 构建MQTT CONNECT数据包
+    // 使用产品ID、鉴权令牌、设备名等信息构建标准MQTT连接包
+    if (MQTT_PacketConnect(ONENET_PROID,           // 产品ID
+                          authorization_buf,      // 鉴权令牌
+                          ONENET_DEVICE_NAME,     // 设备名称
+                          256,                    // Keep-alive时间（秒）
+                          1,                      // 清除会话标志位
+                          MQTT_QOS_LEVEL0,        // QoS等级
+                          NULL,                   // Will Topic（可选）
+                          NULL,                   // Will Message（可选）
+                          0,                      // Will消息长度
+                          &mqttPacket) != 0) {    // 输出MQTT包结构
+        ONENET_LOG_CONN("ERROR: Failed to construct MQTT CONNECT packet");
+        result = 2;  // 设置错误码：MQTT包构造失败
+        goto exit;   // 跳转到退出清理部分
+    }
+
+    ONENET_LOG_CONN("Sending MQTT CONNECT packet (%u bytes)...", mqttPacket._len);
+
+    // 步骤3: 发送CONNECT数据包到网络
+    // 通过ESP8266模块发送构建好的连接请求
+    ESP8266_SendData(mqttPacket._data, mqttPacket._len);
+
+    // 步骤4: 等待并接收CONNACK响应
+    // 等待OneNET平台返回连接确认响应
+    ONENET_LOG_CONN("Waiting for CONNACK response (timeout: 250ms)...");
+    dataPtr = ESP8266_GetIPD(250);  // 等待250毫秒
+    if (dataPtr == NULL) {
+        ONENET_LOG_CONN("ERROR: Timeout waiting for CONNACK");
+        result = 3;  // 设置错误码：等待响应超时
+        goto exit;   // 跳转到退出清理部分
+    }
+
+    ONENET_LOG_CONN("Received response data, parsing packet...");
+
+    // 步骤5: 验证接收到的数据包类型
+    // 确认收到的是CONNACK包而不是其他类型的MQTT包
+    if (MQTT_UnPacketRecv(dataPtr) != MQTT_PKT_CONNACK) {
+        ONENET_LOG_CONN("ERROR: Received non-CONNACK packet");
+        result = 4;  // 设置错误码：非CONNACK包
+        goto exit;   // 跳转到退出清理部分
+    }
+
+    // 步骤6: 解析CONNACK包内容并处理返回码
+    // 获取连接确认包中的返回码，并根据码值判断连接结果
+    connack_code = MQTT_UnPacketConnectAck(dataPtr);
+    ONENET_LOG_CONN("CONNACK return code: %u", connack_code);
+
+    // 根据CONNACK返回码设置相应的错误状态
+    switch (connack_code) {
+        case 0:
+            // 连接成功
+            ONENET_LOG_CONN("Connection established successfully!");
+            result = 0;
+            break;
+        case 1:
+            // 不支持的协议版本
+            ONENET_LOG_CONN("ERROR: Protocol version not accepted (code=1)");
+            result = 6;
+            break;
+        case 2:
+            // 客户端标识符被拒绝
+            ONENET_LOG_CONN("ERROR: Client ID rejected (code=2)");
+            result = 7;
+            break;
+        case 3:
+            // 服务器不可用
+            ONENET_LOG_CONN("ERROR: Server unavailable (code=3)");
+            result = 8;
+            break;
+        case 4:
+            // 用户名或密码错误
+            ONENET_LOG_CONN("ERROR: Username or password incorrect (code=4)");
+            result = 9;
+            break;
+        case 5:
+            // 未授权连接
+            ONENET_LOG_CONN("ERROR: Unauthorized connection (code=5)");
+            result = 10;
+            break;
+        case 255:
+            // CONNACK包格式错误
+            ONENET_LOG_CONN("ERROR: CONNACK packet format error (invalid length or flags)");
+            result = 5;
+            break;
+        default:
+            // 未知的返回码
+            ONENET_LOG_CONN("ERROR: Unknown CONNACK return code: %u", connack_code);
+            result = 11;
+            break;
+    }
+
 exit:
-	// 释放MQTT包缓冲区
-	MQTT_DeleteBuffer(&mqttPacket);
-	
-	return result;
+    // 释放MQTT数据包占用的内存资源
+    MQTT_DeleteBuffer(&mqttPacket);
+    // 返回连接结果
+    return result;
 }
 
 extern u8 temp,humi;
@@ -393,52 +445,50 @@ extern u16 Dust_Limit;
 extern u8 Noise_Limit;
 extern u16 decibels;//当前环境中分贝大小
 extern u16 PM2_5_ENV;
-unsigned char OneNet_FillBuf(char *buf)
+/**
+ * @brief 生成 OneNET 平台所需的 JSON 数据包
+ * @param buf       输出缓冲区
+ * @param buf_size  缓冲区大小（字节）
+ * @return          成功时返回写入的字符数（不含 '\0'），失败返回 -1
+ *
+ * @note 修改 JSON 字段时请注意：
+ *       - JSON 对象中 **最后一个字段后面不能有逗号**；
+ *       - 若增删字段，务必同步调整前一项末尾的逗号（`,`）；
+ *       - 例如：删除最后一项时，需将其前一项末尾的逗号一并删除；
+ *       - 否则将生成非法 JSON，导致 OneNET 解析失败！
+ */
+int OneNet_FillBuf(char *buf, size_t buf_size)
 {
-	
-	char text[48];
-	
-	memset(text, 0, sizeof(text));
-	
-	strcpy(buf, "{\"id\":\"123\",\"params\":{");
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"temp\":{\"value\":%d},", temp);//温度
-	strcat(buf, text);
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"humi\":{\"value\":%d},", humi);//湿度
-	strcat(buf, text);
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"dust\":{\"value\":%d},", PM2_5_ENV);//扬尘
-	strcat(buf, text);
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"noise\":{\"value\":%d},", decibels);//噪音
-	strcat(buf, text);
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"noise_limit\":{\"value\":%d},", Noise_Limit);//噪音阈值
-	strcat(buf, text);
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"dust_limit\":{\"value\":%d},", Dust_Limit);//扬尘阈值
-	strcat(buf, text);
-	
+    if (buf == NULL || buf_size == 0) {
+        return -1;
+    }
 
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"dust_excess\":{\"value\":%s},",(PM2_5_ENV > Dust_Limit) ? "true" : "false");//扬尘过大
-	strcat(buf, text);
-	
-	memset(text, 0, sizeof(text));
-	sprintf(text, "\"noise_excess\":{\"value\":%s}", (decibels > Noise_Limit) ? "true" : "false");//噪音过大
-	strcat(buf, text);
-	
-	strcat(buf, "}}");
-	
-	return strlen(buf);
+    int len = snprintf(buf, buf_size,
+        "{\"id\":\"123\",\"params\":{"
+            "\"temp\":{\"value\":%d},"
+            "\"humi\":{\"value\":%d},"
+            "\"dust\":{\"value\":%d},"
+            "\"noise\":{\"value\":%d},"
+            "\"noise_limit\":{\"value\":%d},"
+            "\"dust_limit\":{\"value\":%d},"
+            "\"dust_excess\":{\"value\":%s},"      // ← 非最后一项，保留逗号
+			"\"noise_excess\":{\"value\":%s}"      // ← 最后一项，**无逗号**，报警可改为事件上传而非属性
+        "}}",
+        temp,
+        humi,
+        PM2_5_ENV,
+        decibels,
+        Noise_Limit,
+        Dust_Limit,
+        (PM2_5_ENV > Dust_Limit) ? "true" : "false",
+        (decibels > Noise_Limit) ? "true" : "false"
+    );
 
+    if (len < 0 || (size_t)len >= buf_size) {
+        return -1;
+    }
+
+    return len;
 }
 
 
@@ -459,27 +509,32 @@ int8_t OneNet_SendData(void)
     char payloadBuf[256];
     int8_t ret = -3;
     int sentBytes = 0;
-    uint16_t body_len = 0;
+    int body_len = 0;  // 注意：现在使用 int 类型（与 OneNet_FillBuf 返回值一致）
 
     memset(payloadBuf, 0, sizeof(payloadBuf));
-    body_len = OneNet_FillBuf(payloadBuf);
 
-    ONENET_LOG("Payload (%u bytes): %s", body_len, payloadBuf);
+    // 调用新版 OneNet_FillBuf，传入缓冲区大小
+    body_len = OneNet_FillBuf(payloadBuf, sizeof(payloadBuf));
 
-    if (body_len == 0 || body_len >= sizeof(payloadBuf)) {
-        ONENET_LOG("ERROR: Invalid payload length: %u", body_len);
+    // 检查返回值：-1 表示错误，>=0 表示成功字节数
+    if (body_len <= 0) {
+        ONENET_LOG_SEND("ERROR: Failed to generate payload (ret=%d)", body_len);       
         return -3;
     }
 
-    if (MQTT_PacketSaveData(ONENET_PROID, ONENET_DEVICE_NAME, body_len, NULL, &mqttPacket) != 0) {
-        ONENET_LOG("ERROR: MQTT packet creation failed!");
+    // 可选：日志输出（注意 body_len 是 int）
+    ONENET_LOG_SEND("Payload (%d bytes): %s", body_len, payloadBuf);
+
+    // 创建 MQTT 数据包结构（仅元数据，不含 payload）
+    if (MQTT_PacketSaveData(ONENET_PROID, ONENET_DEVICE_NAME, (uint16_t)body_len, NULL, &mqttPacket) != 0) {
+        ONENET_LOG_SEND("ERROR: MQTT packet creation failed!");
         return -1;
     }
 
-    // 填充 payload 到 MQTT 包
-    for (uint16_t i = 0; i < body_len; i++) {
+    // 将 payload 填入 MQTT 包
+    for (int i = 0; i < body_len; i++) {  // 使用 int 索引更安全
         if (mqttPacket._len >= mqttPacket._size) {
-            ONENET_LOG("ERROR: Buffer overflow during payload fill!");
+            ONENET_LOG_SEND("ERROR: Buffer overflow during payload fill!");
             ret = -4;
             goto cleanup;
         }
@@ -488,10 +543,10 @@ int8_t OneNet_SendData(void)
 
     // 发送数据
     sentBytes = ESP8266_SendData(mqttPacket._data, mqttPacket._len);
-    ONENET_LOG("Sent %d / %u bytes", sentBytes, mqttPacket._len);
+    ONENET_LOG_SEND("Sent %d / %u bytes", sentBytes, mqttPacket._len);
 
-    if (sentBytes != mqttPacket._len) {
-        ONENET_LOG("ERROR: Incomplete send!");
+    if (sentBytes != (int)mqttPacket._len) {
+        ONENET_LOG_SEND("ERROR: Incomplete send!");
         ret = -2;
         goto cleanup;
     }

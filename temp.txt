@@ -44,21 +44,3 @@ MyProject/
 ├── README.md
 └── LICENSE
 
-
-
-int len = sprintf(buf,
-    "{\"id\":\"123\",\"params\":{"
-        "\"temp\":{\"value\":%d},"
-        "\"humi\":{\"value\":%d},"
-        "\"dust\":{\"value\":%d},"
-        "\"noise\":{\"value\":%d},"
-        "\"noise_limit\":{\"value\":%d},"
-        "\"dust_limit\":{\"value\":%d},"
-        "\"dust_excess\":{\"value\":%s},"
-        "\"noise_excess\":{\"value\":%s}"   // ← 最后一个无逗号
-    "}}",
-    temp, humi, PM2_5_ENV, decibels, Noise_Limit, Dust_Limit,
-    (PM2_5_ENV > Dust_Limit) ? "true" : "false",
-    (decibels > Noise_Limit) ? "true" : "false"
-);
-return len;

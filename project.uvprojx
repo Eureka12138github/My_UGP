@@ -337,7 +337,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\BSP\stm32f103c8t6_minidev;.\Config</IncludePath>
+              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -766,6 +766,16 @@
               <FileType>5</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_esp8266.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_usart_plus.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart_plus.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart_plus.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart_plus.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -820,16 +830,6 @@
               <FileName>OLED_UI_MenuData.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\OLED_UI_MenuData.h</FilePath>
-            </File>
-            <File>
-              <FileName>base64.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\base64.c</FilePath>
-            </File>
-            <File>
-              <FileName>base64.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\base64.h</FilePath>
             </File>
             <File>
               <FileName>esp8266.c</FileName>
@@ -969,27 +969,57 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>CJSON</GroupName>
-          <Files>
-            <File>
-              <FileName>cJSON.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\CJSON\cJSON.c</FilePath>
-            </File>
-            <File>
-              <FileName>cJSON.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\CJSON\cJSON.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>Config</GroupName>
           <Files>
             <File>
               <FileName>debug_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Config\debug_config.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Middlewares</GroupName>
+          <Files>
+            <File>
+              <FileName>base64.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Third_Party\base64.c</FilePath>
+            </File>
+            <File>
+              <FileName>base64.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Third_Party\base64.h</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Third_Party\cJSON.c</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Third_Party\cJSON.h</FilePath>
+            </File>
+            <File>
+              <FileName>cbuf_slot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Core\cbuf_slot.c</FilePath>
+            </File>
+            <File>
+              <FileName>cbuf_slot.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Core\cbuf_slot.h</FilePath>
+            </File>
+            <File>
+              <FileName>my_assert.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Core\my_assert.c</FilePath>
+            </File>
+            <File>
+              <FileName>my_assert.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Core\my_assert.h</FilePath>
             </File>
           </Files>
         </Group>

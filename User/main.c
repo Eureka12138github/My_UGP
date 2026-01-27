@@ -43,9 +43,6 @@ bool Dust_Alarm = false;
 bool Warning_Show_Flag1 = true;
 bool Warning_Show_Flag2 = true;
 bool Warning_Show_Flag3 = true;
-#if 0
-需要注释的内容
-#endif
 /*
 重要：编译器的优化等级要开高点才能编译通过，不然FLASH就满了!
 方法：点击魔术棒，点开C/C++页面，将"Optimization"等级改为Level 3(-o3)
@@ -106,6 +103,9 @@ bool Warning_Show_Flag3 = true;
  *        - 失败超过阈值则记录错误信息、延时并触发看门狗复位
  */
 void Data_Send(void) {
+	//数据无法发送尝试重连而不是直接复位？：（未实现）
+										//状态机非阻塞地检查 MQTT 状态；
+										//定时触发重连逻辑
     static u8 Send_Data_Error = 0; // 静态变量用于记录连续发送失败次数
 
     if (OneNet_SendData() == 0) {
