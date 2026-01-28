@@ -10,6 +10,7 @@
 #include "Alarm.h"
 #include "MYIWD.h"
 
+
 #define ESP8266_ONENET_INFO		"AT+CIPSTART=\"TCP\",\"mqtts.heclouds.com\",1883\r\n"
 #define TASK_NUM_MAX 		(sizeof(TaskComps) / sizeof(TaskComps[0])) //计算数组大小 
 #define DMA_TASK_NUM_MAX 	(sizeof(DMATaskComps) / sizeof(DMATaskComps[0])) //计算数组大小 	
@@ -117,7 +118,7 @@ void Data_Send(void) {
                         DATA_SEND_INDICATOR_RADIUS * 2 + 2,
                         DATA_SEND_INDICATOR_RADIUS * 2 + 2); // 局部刷新OLED显示区域
 
-        ESP8266_Clear(); // 清除ESP8266缓冲区（避免残留数据影响下次发送）
+//        ESP8266_Clear(); // 清除ESP8266缓冲区（避免残留数据影响下次发送）
 
         // 恢复OLED状态：清除指示圆，不影响其他内容显示
         OLED_ClearArea(DATA_SEND_INDICATOR_X - DATA_SEND_INDICATOR_RADIUS,
@@ -311,7 +312,7 @@ static TaskComps_t TaskComps[] = {
     {0, Buzzer_Buzz_INTERVAL_MS, Buzzer_Buzz_INTERVAL_MS, Buzzer_Turn},
 
     // 噪音传感器数据包发送任务：每 Get_Noise_Data_INTERVAL_MS ms 执行一次 XM7903_Task
-    {0, Get_Noise_Data_INTERVAL_MS, Get_Noise_Data_INTERVAL_MS, XM7903_Task},
+//    {0, Get_Noise_Data_INTERVAL_MS, Get_Noise_Data_INTERVAL_MS, XM7903_Task},
 
     // 实时时钟读取任务：每 Read_Time_INTERVAL_MS ms 执行一次 MyRTC_ReadTime
     {0, Read_Time_INTERVAL_MS, Read_Time_INTERVAL_MS, MyRTC_ReadTime},
@@ -446,7 +447,10 @@ void Handle_Network_Data(void) {
 
     // 获取数据
     dataPtr = ESP8266_GetIPD(0);
+	Serial_Printf(USART_DEBUG,"dataPtr:%s\r\n",!dataPtr ? "NULL" : "VALID");
+//	Delay_ms(100);
     if (dataPtr != NULL) {
+		Serial_Printf(USART_DEBUG,"Data Coming!\r\n");
         // 解析和处理数据
         if (OneNet_RevPro(dataPtr) != 0) {
             Rece_Data_Error++;
@@ -455,7 +459,7 @@ void Handle_Network_Data(void) {
                 // 连续三次错误，报告错误
                 // UsartPrintf(USART_DEBUG, "Error: 连续三次数据处理失败，报告错误\r\n");
                 ErrorType(ENV_COMM_DATA_RECEPTION_FAILURE);
-                Delay_s(3);//延时三秒，即将看门狗复位
+//                Delay_s(3);//延时三秒，即将看门狗复位
             }
         } else {
             // 数据处理成功，重置错误计数器
@@ -687,7 +691,7 @@ int main(){
 	
 	OLED_UI_Init(&MainMenuPage);//UI初始化
 	MyRTC_Init();//系统时间设置
-	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
+//	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
 	PM_Data.pm2_5_env = 100;//静态警报测试
 	decibels = 67;	
 	while(1){
@@ -698,7 +702,7 @@ int main(){
 		TaskHandler();//任务处理（包含数据发送、时间获取、警报处理等事件）
 		Handle_Thresholds();//保存与恢复默认阈值
 		Handle_Network_Data();//接收OneNet数据
-		IWDG_ReloadCounter();//喂狗
+//		IWDG_ReloadCounter();//喂狗
 	}
 }
 
@@ -723,3 +727,6 @@ void TIM2_IRQHandler(void)
     }
 
 }
+
+
+

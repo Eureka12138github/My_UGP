@@ -99,18 +99,18 @@ XM7903_Data_t XM7903_Parse(const uint8_t *frame)
  * @see BSP_XM7903_GetRxBuffer
  * @see XM7903_Parse
  */
-void XM7903_Task(void)
-{
-    BSP_XM7903_SendQuery();
-    BSP_XM7903_StartReceive();
+//void XM7903_Task(void)
+//{
+//    BSP_XM7903_SendQuery();
+//    BSP_XM7903_StartReceive();
 
-    if (xm7903_rx_ready) {
-        xm7903_rx_ready = false;
-        const uint8_t *buf = BSP_XM7903_GetRxBuffer();
-        g_xm7903_data = XM7903_Parse(buf); // 内部已处理 CRC 失败情况
-    } else {
-        // 未收到响应：明确标记为无效，并清零数值
-        g_xm7903_data.valid = false;
-//        g_xm7903_data.noise_db = 0.0f;
-    }
-}
+//    if (xm7903_rx_ready) {
+//        xm7903_rx_ready = false;
+//        const uint8_t *buf = BSP_XM7903_GetRxBuffer();
+//        g_xm7903_data = XM7903_Parse(buf); // 内部已处理 CRC 失败情况
+//    } else {
+//        // 未收到响应：明确标记为无效，并清零数值
+//        g_xm7903_data.valid = false;
+////        g_xm7903_data.noise_db = 0.0f;
+//    }
+//}

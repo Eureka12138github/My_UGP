@@ -4,6 +4,7 @@
 #include "OLED.h"
 #include <string.h>
 #include <stdlib.h>
+#include "bsp_usart.h"
 
 
 
@@ -16,7 +17,7 @@ u8 ESP8266_Init(void);
 _Bool ESP8266_SNTP_Time(char *cmd, char *res, MYRTC* TimeStructure);
 void ESP8266_Clear(void);
 
-_Bool ESP8266_SendCmd(const char *cmd, char *res);
+_Bool ESP8266_SendCmd(const char *cmd, const char *res);
 
 int ESP8266_SendData(unsigned char *data, unsigned short len);
 

@@ -727,16 +727,6 @@
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_oled.h</FilePath>
             </File>
             <File>
-              <FileName>bsp_usart.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_usart.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.h</FilePath>
-            </File>
-            <File>
               <FileName>bsp_pms7003.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_pms7003.c</FilePath>
@@ -767,14 +757,14 @@
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_esp8266.h</FilePath>
             </File>
             <File>
-              <FileName>bsp_usart_plus.c</FileName>
+              <FileName>bsp_usart.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart_plus.c</FilePath>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_usart_plus.h</FileName>
+              <FileName>bsp_usart.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart_plus.h</FilePath>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -992,16 +982,6 @@
               <FilePath>.\Middlewares\Third_Party\base64.h</FilePath>
             </File>
             <File>
-              <FileName>cJSON.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Middlewares\Third_Party\cJSON.c</FilePath>
-            </File>
-            <File>
-              <FileName>cJSON.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Middlewares\Third_Party\cJSON.h</FilePath>
-            </File>
-            <File>
               <FileName>cbuf_slot.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Middlewares\Core\cbuf_slot.c</FilePath>
@@ -1020,6 +1000,16 @@
               <FileName>my_assert.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Middlewares\Core\my_assert.h</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Third_Party\cJSON.c</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Third_Party\cJSON.h</FilePath>
             </File>
           </Files>
         </Group>
