@@ -146,6 +146,14 @@ void Usart2_Init(uint32_t baud)
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
+	
+	//ESP8266的复位引脚初始化先放这里，后续应该专门写bsp_esp8266.c进行初始化
+	//与EXP8266复位有关
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;				//设置为输出
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;						//将初始化的Pin脚
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;				//可承载的最大频率
+	GPIO_Init(GPIOA, &GPIO_InitStructure);	
+	GPIO_SetBits(GPIOA,GPIO_Pin_4);
 
     USART_InitTypeDef USART_InitStructure;
     USART_InitStructure.USART_BaudRate = baud;
@@ -417,6 +425,25 @@ size_t Serial_GetRxCount(USART_TypeDef* USARTx)
 
     return circular_buf_size(handle->rx_cbuf);
 }
+
+
+//未归类函数
+
+
+cbuf_handle_t BSP_USARTX_GetRxCbuf(USART_TypeDef* USARTx)
+{
+	serial_handle_t* handle = get_serial_handle(USARTx);
+	CBUF_ASSERT(handle != NULL);
+
+    if (handle == NULL) {
+        return NULL;
+    }	
+    return handle->rx_cbuf;
+}
+
+
+
+
 
 
 /* ======================== 中断处理 ======================== */

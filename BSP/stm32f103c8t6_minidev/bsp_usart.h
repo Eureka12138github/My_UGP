@@ -10,10 +10,10 @@
 #define SERIAL_USE_USART2   1
 #define SERIAL_USE_USART3   1
 
-#define TX_BUF_SIZE         256
+#define TX_BUF_SIZE         512
 #define RX_BUF_SIZE         512
 
-#define USART_DEBUG         USART3   // printf 重定向目标
+#define USART_DEBUG         USART3   
 // =======================
 
 // 函数声明（带条件编译）
@@ -26,6 +26,9 @@ void Usart2_Init(uint32_t baud);
 #if SERIAL_USE_USART3
 void Usart3_Init(uint32_t baud);
 #endif
+
+
+cbuf_handle_t BSP_USARTX_GetRxCbuf(USART_TypeDef* USARTx);
 
 // 通用 API（始终可用）
 int Serial_SendByte(USART_TypeDef* USARTx, uint8_t Byte);

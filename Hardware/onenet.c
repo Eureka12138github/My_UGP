@@ -508,7 +508,7 @@ int8_t OneNet_SendData(void)
     MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};
     char payloadBuf[256];
     int8_t ret = -3;
-    int sentBytes = 0;
+    bool sentBytes = false;
     int body_len = 0;  // 注意：现在使用 int 类型（与 OneNet_FillBuf 返回值一致）
 
     memset(payloadBuf, 0, sizeof(payloadBuf));
@@ -543,9 +543,9 @@ int8_t OneNet_SendData(void)
 
     // 发送数据
     sentBytes = ESP8266_SendData(mqttPacket._data, mqttPacket._len);
-    ONENET_LOG_SEND("Sent %d / %u bytes", sentBytes, mqttPacket._len);
+    ONENET_LOG_SEND("Already Sent %u bytes!", sentBytes, mqttPacket._len);
 
-    if (sentBytes != (int)mqttPacket._len) {
+    if (!sentBytes) {
         ONENET_LOG_SEND("ERROR: Incomplete send!");
         ret = -2;
         goto cleanup;

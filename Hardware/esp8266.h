@@ -17,9 +17,8 @@ u8 ESP8266_Init(void);
 _Bool ESP8266_SNTP_Time(char *cmd, char *res, MYRTC* TimeStructure);
 void ESP8266_Clear(void);
 
-_Bool ESP8266_SendCmd(const char *cmd, const char *res);
 
-int ESP8266_SendData(unsigned char *data, unsigned short len);
+_Bool ESP8266_SendData(unsigned char *data, unsigned short len);
 
 unsigned char *ESP8266_GetIPD(unsigned short timeOut);
 

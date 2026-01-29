@@ -42,16 +42,26 @@
 #define PMS7003_PACKET_LEN          32U
 
 /* ==================== USART2 - ESP8266 ==================== */
-#define BSP_ESP8266_USART               USART2
-#define BSP_ESP8266_USART_CLK           RCC_APB1Periph_USART2
-#define BSP_ESP8266_GPIO_CLK            RCC_APB2Periph_GPIOA
-#define BSP_ESP8266_TX_PIN              GPIO_Pin_2
-#define BSP_ESP8266_TX_PORT             GPIOA
-#define BSP_ESP8266_RX_PIN              GPIO_Pin_3
-#define BSP_ESP8266_RX_PORT             GPIOA
-#define BSP_ESP8266_RST_PIN             GPIO_Pin_4
-#define BSP_ESP8266_RST_PORT            GPIOA
+//#define ESP8266_USE_USART1 		//用哪个就取消注释哪个
+#define ESP8266_USE_USART2 
+//#define ESP8266_USE_USART3 
+
+#ifdef ESP8266_USE_USART1
+    #define BSP_ESP8266_USARTx      USART1
+#elif defined(ESP8266_USE_USART2)
+    #define BSP_ESP8266_USARTx      USART2
+#elif defined(ESP8266_USE_USART3)
+    #define BSP_ESP8266_USARTx      USART3
+#else
+    #error "One of ESP8266_USE_USART1/2/3 must be defined!"
+#endif
+
 #define BSP_ESP8266_BAUDRATE            115200U
+//复位引脚相关
+#define BSP_ESP8266_GPIO_CLK            RCC_APB2Periph_GPIOA
+#define BSP_ESP8266_RST_PORT            GPIOA
+#define BSP_ESP8266_RST_PIN             GPIO_Pin_4
+
 
 // === XM7903 硬件连接配置 ===
 #define XM7903_USART               USART3

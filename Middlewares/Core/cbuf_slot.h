@@ -55,6 +55,11 @@ size_t circular_buf_capacity(cbuf_handle_t me);
 /// 返回缓冲区中当前包含的元素数量
 size_t circular_buf_size(cbuf_handle_t me);
 
+size_t circular_buf_peek(cbuf_handle_t me, uint8_t* dst, size_t len);
+
+size_t circular_buf_skip(cbuf_handle_t me, size_t len);
+
+
 #endif 
 
 

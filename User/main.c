@@ -4,6 +4,7 @@
 #include "PMS7003.h"
 #include "XM7903.h"
 #include "esp8266.h"
+#include "esp8266_drv.h"
 #include "onenet.h"
 #include "Timer.h"
 #include "DHT11.h"
@@ -99,6 +100,27 @@ bool Warning_Show_Flag3 = true;
 
 
 /**
+ * ⚠️【性能问题】当前 OneNet_SendData() 调用会阻塞主循环约 0.5 秒，
+ *     导致 OLED 刷新卡顿。
+ *
+ * 📌 根本原因：
+ *     内部调用 ESP8266_SendCmd(..., ">") 等待 ESP8266 的 ">" 提示符，
+ *     该过程为同步阻塞（最长 2 秒），且网络响应本身有延迟。
+ *
+ * ✅ 解决方案（后续重构）：
+ *     将发送流程改为非阻塞状态机：
+ *       1. 主循环外启动发送（发 AT+CIPSEND）
+ *       2. 主循环定期轮询是否收到 ">"
+ *       3. 收到后立即发数据，不阻塞
+ *     → 可彻底消除 UI 卡顿。
+ *
+ * 🔧 临时建议：
+ *     避免在主循环高频调用此函数；
+ *     仅在必要时（如定时上传）触发，并接受短暂卡顿。
+ */
+
+
+/**
  * @brief 数据发送函数，负责调用OneNet发送数据，并处理成功/失败情况：
  *        - 成功时通过OLED闪烁指示
  *        - 失败超过阈值则记录错误信息、延时并触发看门狗复位
@@ -150,7 +172,7 @@ void Data_Send(void) {
 void DHT11_Read(void) {
     static u8 DHT11_Error_Flag = 0; // 静态变量用于记录连续读取失败次数
 
-    if (DHT11_Read_Data(&temp, &humi) == 0) {
+    if (DHT11_Read_Data(&temp, &humi)) {
         // 读取成功：清空错误计数
         DHT11_Error_Flag = 0;
     } else {
@@ -447,10 +469,10 @@ void Handle_Network_Data(void) {
 
     // 获取数据
     dataPtr = ESP8266_GetIPD(0);
-	Serial_Printf(USART_DEBUG,"dataPtr:%s\r\n",!dataPtr ? "NULL" : "VALID");
+//	Serial_Printf(USART_DEBUG,"dataPtr:%s\r\n",!dataPtr ? "NULL" : "VALID");
 //	Delay_ms(100);
     if (dataPtr != NULL) {
-		Serial_Printf(USART_DEBUG,"Data Coming!\r\n");
+//		Serial_Printf(USART_DEBUG,"Data Coming!\r\n");
         // 解析和处理数据
         if (OneNet_RevPro(dataPtr) != 0) {
             Rece_Data_Error++;
@@ -527,7 +549,7 @@ void Initialize_System(void) {
     \* *************************************************************************** */
     // 检测DHT11传感器存在性
     retry_count = 0;
-    while(DHT11_Init()) {
+    while(!DHT11_Init()) {
         retry_count++;
         OLED_ShowChinese(66, 0, "未找到", OLED_12X12_FULL);
         OLED_ShowString(66, 16, "DHT11!", OLED_7X12_HALF);
@@ -679,6 +701,7 @@ void Initialize_System(void) {
 }
 
 int main(){
+	Delay_Init();
 	Initialize_Hardware();
 	ReadStoreErrorTime();
 	Check_Reset_Way();//检查复位方式，若是看门狗复位，复位次数加一并储存到FLASH中	    
@@ -728,5 +751,21 @@ void TIM2_IRQHandler(void)
 
 }
 
+//#include "esp8266_drv.h"
+//#include "Delay.h"
+//int main(void) {
+//	Delay_Init();
+//	ESP8266_HardwareInit();
+////    Usart2_Init(115200);     // 调试口（用于连接 PC 串口助手）
+//	Usart3_Init(9600);
 
+//	
 
+//    while (1) {
+//    
+//		Serial_Printf(USART_DEBUG, "==========TEST BEGAIN=================\r\n");
+//		ESP8266_Init();	
+//		Serial_Printf(USART_DEBUG, "==========TEST END====================\r\n");
+//		Delay_s(2);
+//	}
+//}

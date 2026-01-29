@@ -24,8 +24,8 @@ void DHT11_GPIO_Init_IN(void)
 }
 
 //DHT11初始化 
-//返回0：初始化成功，1：失败
-u8 DHT11_Init(void)//初始化要结合DHT11的通讯时序图来理解
+//返回 true，初始化成功；false，失败；
+bool DHT11_Init(void)//初始化要结合DHT11的通讯时序图来理解
 {
 	DHT11_GPIO_Init_OUT();
 	DHT11_High;
@@ -43,9 +43,9 @@ void DHT11_Rst(void)
 }
 
 //等待DHT11的回应
-//返回1:未检测到DHT11的存在
-//返回0:存在
-u8 DHT11_Check(void) 	   
+//返回 false :未检测到DHT11的存在
+//返回 true :存在
+bool DHT11_Check(void) 	   
 {   
 	u8 retry=0;
 	DHT11_GPIO_Init_IN();
@@ -54,15 +54,15 @@ u8 DHT11_Check(void)
 		retry++;
 		Delay_us(1);
 	};
-	if(retry>=100)return 1;//这里指的是如果拉低时间过长表示可能出错了，返回1，表示初始化错误
+	if(retry>=100)return false;//这里指的是如果拉低时间过长表示可能出错了，返回1，表示初始化错误
 	else retry=0;
     while (DHT11_DQ&&retry<100)//判断从机发出 80us 的高电平是否结束如结束则主机进入数据接收状态
 	{
 		retry++;
 		Delay_us(1);
 	};	 
-	if(retry>=100)return 1;	    
-	return 0;
+	if(retry>=100)return false;	    
+	return true;
 }
 
 //从DHT11读取一个位
@@ -103,13 +103,13 @@ u8 DHT11_Read_Byte(void)
 //从DHT11读取一次数据
 //temp:温度值(范围:0~50°)
 //humi:湿度值(范围:20%~90%)
-//返回值：0,正常;1,读取失败
-u8 DHT11_Read_Data(u16 *temp,u16 *humi)    
+//返回值：true,正常;false,读取失败
+bool DHT11_Read_Data(u16 *temp,u16 *humi)    
 {        
  	u8 buf[5];
 	u8 i;
 	DHT11_Rst();
-	if(DHT11_Check()==0)
+	if(DHT11_Check())
 	{
 		for(i=0;i<5;i++)//读取40位数据
 		{
@@ -122,7 +122,7 @@ u8 DHT11_Read_Data(u16 *temp,u16 *humi)
 			*temp=buf[2];
 		}
 		
-	}else return 1;
-	return 0;	    
+	}else return false;
+	return true;	    
 }
 

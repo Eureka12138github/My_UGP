@@ -266,5 +266,57 @@ int8_t   circular_buf_get(cbuf_handle_t me, uint8_t* data)
     return 0;  // 成功
 }
 
+/**
+ * @brief 从环形缓冲区 peek 多个字节（不移动读指针）
+ *
+ * 将缓冲区中从读指针开始的最多 len 个字节复制到 dst 中，
+ * 不改变 read_index。
+ *
+ * @param[in]  me   有效句柄
+ * @param[out] dst  目标缓冲区（必须足够大）
+ * @param[in]  len  请求 peek 的字节数
+ * @return 实际 peek 的字节数（<= len）
+ */
+size_t circular_buf_peek(cbuf_handle_t me, uint8_t* dst, size_t len) {
+    CBUF_ASSERT(me && dst);
+    if (!me || !dst) return 0;
+
+    size_t available = circular_buf_size(me);
+    if (available == 0) return 0;
+	
+    size_t to_copy = (len < available) ? len : available;
+    size_t copied = 0;
+    size_t ridx = me->read_index;
+	
+    while (copied < to_copy) {
+        dst[copied++] = me->buffer[ridx];
+        if (++ridx == me->max) ridx = 0;
+    }
+
+    return copied;
+}
+
+/**
+ * @brief 从环形缓冲区跳过（丢弃）指定数量的字节
+ *
+ * @param[in] me   有效句柄
+ * @param[in] len  要跳过的字节数
+ * @return 实际跳过的字节数（<= len，且 <= 当前 size）
+ */
+size_t circular_buf_skip(cbuf_handle_t me, size_t len) {
+    CBUF_ASSERT(me);
+    if (!me) return 0;
+
+    size_t available = circular_buf_size(me);
+    if (available == 0) return 0;
+	//这里保证不会超写指针
+    size_t to_skip = (len < available) ? len : available;
+    me->read_index += to_skip;
+    if (me->read_index >= me->max) {
+        me->read_index -= me->max; // 支持 skip 跨越边界
+    }
+    return to_skip;
+}
+
 
 
