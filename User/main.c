@@ -3,7 +3,6 @@
 #include "bsp_usart.h"
 #include "PMS7003.h"
 #include "XM7903.h"
-#include "esp8266.h"
 #include "esp8266_drv.h"
 #include "onenet.h"
 #include "Timer.h"
@@ -131,7 +130,7 @@ void Data_Send(void) {
 										//定时触发重连逻辑
     static u8 Send_Data_Error = 0; // 静态变量用于记录连续发送失败次数
 
-    if (OneNet_SendData() == 0) {
+    if (!OneNet_SendData()) {
         // 数据发送成功：OLED局部刷新，显示一次闪烁提示
         OLED_DrawCircle(DATA_SEND_INDICATOR_X, DATA_SEND_INDICATOR_Y,
                         DATA_SEND_INDICATOR_RADIUS, OLED_FILLED); // 绘制实心圆作为发送指示
@@ -140,7 +139,6 @@ void Data_Send(void) {
                         DATA_SEND_INDICATOR_RADIUS * 2 + 2,
                         DATA_SEND_INDICATOR_RADIUS * 2 + 2); // 局部刷新OLED显示区域
 
-//        ESP8266_Clear(); // 清除ESP8266缓冲区（避免残留数据影响下次发送）
 
         // 恢复OLED状态：清除指示圆，不影响其他内容显示
         OLED_ClearArea(DATA_SEND_INDICATOR_X - DATA_SEND_INDICATOR_RADIUS,
@@ -457,37 +455,28 @@ void Handle_Thresholds(void) {
     }
 }
 
-/**
- * @brief 处理从网络接收到的数据
- *
- * 该函数通过调用 ESP8266_GetIPD 获取数据，并使用 OneNet_RevPro 解析和处理接收到的数据。
- * 如果处理过程中出现错误，函数会增加错误计数，并在连续三次错误后调用 ErrorWarningType 报告错误。
- */
 void Handle_Network_Data(void) {
-    static u8 Rece_Data_Error = 0; // 静态变量，用于累积错误次数
-    unsigned char *dataPtr = NULL;
+    static uint8_t error_count = 0;
+    
+    esp8266_ipd_frame_t frame = ESP8266_GetIPD(0); // 非阻塞
 
-    // 获取数据
-    dataPtr = ESP8266_GetIPD(0);
-//	Serial_Printf(USART_DEBUG,"dataPtr:%s\r\n",!dataPtr ? "NULL" : "VALID");
-//	Delay_ms(100);
-    if (dataPtr != NULL) {
-//		Serial_Printf(USART_DEBUG,"Data Coming!\r\n");
-        // 解析和处理数据
-        if (OneNet_RevPro(dataPtr) != 0) {
-            Rece_Data_Error++;
-            // UsartPrintf(USART_DEBUG, "Error: 数据处理失败, 错误次数: %d\r\n", Rece_Data_Error);
-            if (Rece_Data_Error >= 3) {
-                // 连续三次错误，报告错误
-                // UsartPrintf(USART_DEBUG, "Error: 连续三次数据处理失败，报告错误\r\n");
+
+    if (!frame.valid) {
+        return; // 无数据或无效帧
+    }
+
+    // ✅ 只处理 OneNET 控制指令
+    if (frame.type == ESP8266_IPD_TYPE_ONENET_CMD) {
+        if (OneNet_RevPro((unsigned char*)frame.data) != 0) {
+            error_count++;
+            if (error_count >= 3) {
                 ErrorType(ENV_COMM_DATA_RECEPTION_FAILURE);
-//                Delay_s(3);//延时三秒，即将看门狗复位
             }
         } else {
-            // 数据处理成功，重置错误计数器
-            Rece_Data_Error = 0;
+            error_count = 0;
         }
     }
+    // else: ACK 或其他类型，静默丢弃，不计入错误
 }
 
 /**
@@ -520,11 +509,10 @@ void Initialize_Hardware(void) {
     Timer2_Init();//定时2初始化，与任务调度有关
     Store_Init();//FLASH初始化，便于后续存储阈值与独立看门狗次数
     Alarm_Init();//警报初始化
-//    Usart1_Init(9600);
 //	BSP_PMS7003_Init();//扬尘传感器初始化
 //	BSP_XM7903_Init();//噪音传感器初始化
-    Usart2_Init(115200);
-	Usart3_Init(9600);   
+	ESP8266_HardwareInit();
+//	Usart3_Init(9600);   
 	
 }
 

@@ -149,6 +149,18 @@ _Bool ESP8266_SendCmd(const char *cmd, const char *res)
     return 1;
 }
 
+/**
+ * @brief 更新 ESP8266 初始化状态到 OLED 指定区域
+ *
+ * 清除固定区域 (66,32) 宽 50 高 16 像素，并显示状态字符串。
+ * 用于在无串口调试时提供用户反馈。
+ *
+ * @param[in] msg 要显示的状态信息（如 "AT ERR", "WIFI OK"）
+ */
+ static void ESP8266_SetStatus(const char* msg) {
+    OLED_ClearArea(66, 32, 50, 16);
+    OLED_ShowString(66, 32, msg, OLED_7X12_HALF);
+}
 
 /**
  ******************************************************************************
@@ -190,7 +202,7 @@ u8 ESP8266_Init(void)
     ESP8266_LOG_INIT("=== ESP8266 初始化开始 ===");
 
     /* 清除 OLED 状态区（准备显示新状态） */
-    OLED_ClearArea(66, 32, 50, 16);
+    ESP8266_SetStatus(""); // 清空（传空字符串或后续覆盖均可）
 
     /* 1. 测试 AT */
     ESP8266_LOG_INIT("1. 测试 AT 指令...");
@@ -203,7 +215,7 @@ u8 ESP8266_Init(void)
     }
     if (retryCount >= maxRetries) {
         ESP8266_LOG_INIT("❌ AT 指令无响应，初始化失败！");
-        OLED_ShowString(66, 32, "AT ERR", OLED_7X12_HALF);
+        ESP8266_SetStatus("AT ERR");
         return 1;
     }
 
@@ -218,7 +230,7 @@ u8 ESP8266_Init(void)
     }
     if (retryCount >= maxRetries) {
         ESP8266_LOG_INIT("❌ 设置 STA 模式失败！");
-        OLED_ShowString(66, 32, "STA ERR", OLED_7X12_HALF);
+        ESP8266_SetStatus("STA ERR");
         return 2;
     }
 
@@ -233,7 +245,7 @@ u8 ESP8266_Init(void)
     }
     if (retryCount >= maxRetries) {
         ESP8266_LOG_INIT("❌ 启用 DHCP 失败！");
-        OLED_ShowString(66, 32, "DHCP ERR", OLED_7X12_HALF);
+        ESP8266_SetStatus("DHCP ERR");
         return 3;
     }
 
@@ -248,12 +260,318 @@ u8 ESP8266_Init(void)
     }
     if (retryCount >= maxRetries) {
         ESP8266_LOG_INIT("❌ WiFi 连接失败，请检查 SSID/密码或信号！");
-        OLED_ShowString(66, 32, "WIFI ERR", OLED_7X12_HALF);
+        ESP8266_SetStatus("WIFI ERR");
         return 4;
     }
 
-    /* 全部成功：可选择显示 OK 或保持空白 */
-    // OLED_ShowString(66, 32, "OK", OLED_7X12_HALF); // 可选
+    /* 全部成功：可选择显示 OK，也可保持空白（推荐不显示，避免遮挡其他信息） */
+    // ESP8266_SetStatus("OK"); // 可选
+
     ESP8266_LOG_INIT("=== ESP8266 初始化完成！===");
     return 0;
+}
+
+
+/**
+ * @brief 向 ESP8266 提交待发送的数据（非阻塞式提交）
+ *
+ * 本函数用于在已建立 TCP/UDP 连接后，向 ESP8266 模块提交应用层数据。
+ * 它执行以下操作：
+ *   1. 发送 AT+CIPSEND=<len> 指令
+ *   2. 等待 ESP8266 返回 ">" 提示符（表示准备接收数据）
+ *   3. 通过串口直接发送用户数据载荷
+ *
+ * @param[in] data 指向待发送数据的缓冲区（非空）
+ * @param[in] len  数据长度（字节），必须 > 0 且 ≤ 2048（ESP8266 单次限制）
+ *
+ * @retval 0 成功提交数据到 ESP8266（已进入发送队列）
+ * @retval 1 失败（原因：AT+CIPSEND 超时、未收到 ">" 提示符等）
+ *
+ * @note
+ *   - **本函数不等待 "SEND OK" 或网络 ACK 响应**。  
+ *     原因：ESP8266 的发送确认（如 "SEND OK"）和平台业务响应（如 OneNET 的 4 字节 ACK）  
+ *     均以**异步主动上报**，（URC）形式返回（例如 +IPD 或纯数据帧），  
+ *     应由主循环持续调用 `ESP8266_GetIPD()` 统一捕获和处理。
+ *   - 此设计实现**发送与接收解耦**，避免因网络延迟阻塞主业务逻辑。
+ *   - 成功返回仅表示数据已成功提交至 ESP8266 内部缓冲区，**不代表对端已接收**。
+ *
+ * @warning
+ *   - 调用前必须确保 ESP8266 已成功连接目标服务器（如通过 AT+CIPSTART）
+ *   - 若 ESP8266 缓冲区满或链路异常，后续可能通过 URC 上报错误（如 "SEND FAIL"），
+ *     但本函数无法感知，需依赖上层超时或状态机检测。
+ */
+bool ESP8266_SendData(const unsigned char *data, unsigned short len)
+{
+    char cmdBuf[32];
+    snprintf(cmdBuf, sizeof(cmdBuf), "AT+CIPSEND=%d\r\n", len);
+    
+    // 发送 AT+CIPSEND 命令，等待 ">" 提示符
+    if (ESP8266_SendCmd(cmdBuf, ">")) {
+        return 1;
+    }
+	
+    Serial_SendArray(BSP_ESP8266_USARTx, data, len);
+    return 0; // 成功提交数据。但响应不在此判断！
+}
+
+
+/**
+ * @brief 根据数据内容识别 ESP8266 +IPD 接收帧的业务类型
+ *
+ * 本函数用于在成功解析出完整 +IPD 数据载荷后，根据其内容特征判断其语义类型，
+ * 以便上层应用进行差异化处理（如忽略 ACK、解析 OneNET 指令等）。
+ *
+ * @param[in] data 指向已接收数据载荷的指针（非空）
+ * @param[in] len  数据长度（字节），应 > 0
+ * @return         识别出的数据类型，可能为：
+ *                 - ESP8266_IPD_TYPE_ACK: 平台返回的 4 字节确认帧 (0x40 0x02 0x00 0x0A)
+ *                 - ESP8266_IPD_TYPE_ONENET_CMD: OneNET 下发的 JSON 控制指令
+ *                 - ESP8266_IPD_TYPE_CUSTOM: 其他有效业务数据
+ *                 - ESP8266_IPD_TYPE_UNKNOWN: 空数据或无法识别内容
+ *
+ * @note 该函数不修改输入数据，仅做只读分析。
+ * @warning 不对 data 指针做 NULL 检查，调用者需确保有效性。
+ */
+static esp8266_ipd_type_t classify_ipd_data(const uint8_t *data, uint16_t len)
+{
+    // 1. 判断是否为已知 ACK 帧：固定 4 字节 {0x40, 0x02, 0x00, 0x0A}
+    if (len == 4U &&
+        data[0] == 0x40U &&
+        data[1] == 0x02U &&
+        data[2] == 0x00U &&
+        data[3] == 0x0AU) {
+        return ESP8266_IPD_TYPE_ACK;
+    }
+
+    // 2. 判断是否为 OneNET 控制指令：长度合理且包含 JSON 起始符 '{'
+    if ((len >= 10U) && (len <= 255U)) {
+        if (memchr(data, '{', len) != NULL) {
+            // 可扩展：未来可增加关键字匹配（如 "params", "$sys"）提升准确性
+            return ESP8266_IPD_TYPE_ONENET_CMD;
+        }
+    }
+
+    // 3. 其他非空数据视为自定义业务帧；空数据视为未知
+    return (len > 0U) ? ESP8266_IPD_TYPE_CUSTOM : ESP8266_IPD_TYPE_UNKNOWN;
+}
+
+
+/**
+ * @brief 解析 ESP8266 的 +IPD 数据帧（支持超时控制）
+ *
+ * 该函数通过状态机从 USART 接收环形缓冲区中识别并提取完整的 +IPD 数据载荷。
+ * 支持单连接与多连接模式（自动跳过 conn_id），并根据内容分类为 ACK、OneNET 指令等类型。
+ *
+ * @param[in] timeout_ms 超时时间（毫秒）：
+ *                       - = 0：非阻塞模式，若无完整帧则立即返回
+ *                       - > 0：阻塞等待，最长等待 timeout_ms 毫秒
+ *
+ * @return esp8266_ipd_frame_t 解析结果结构体，包含：
+ *         - .data:  指向内部静态缓冲区的数据指针（**仅在下次调用前有效**）
+ *         - .len:   接收到的数据长度（字节）
+ *         - .type:  数据类型（ UNKNOWN / ACK / ONENET_CMD / CUSTOM ）
+ *         - .valid: 是否成功解析出有效帧（true 表示有效）
+ *
+ * @note
+ *   - 内部使用静态缓冲区（大小由 IPD_BUFFER_SIZE 定义，默认 ≥256 字节）
+ *   - 返回的 .data 指针**不可跨调用持有**，必须在本次返回后立即处理或复制
+ *   - 函数具有状态记忆能力，需在主循环中持续调用直至返回 valid=true 或超时
+ *   - 遇到超时、无效输入或解析错误时，会自动重置状态机，保证下次调用干净启动
+ *   - 自动忽略 ESP8266 主动上报的异步消息（如 +CME ERROR、+CWJAP_CUR 等 +C... 帧）
+ *
+ * @par 调试说明
+ *   定义 ESP8266_DEBUG_IPD 可开启详细日志。典型有效输出示例（ACK 帧）：
+ *   @code
+ *   [ESP8266][IPD] Detected '+'
+ *   [ESP8266][IPD] Start parsing length, first digit: 4
+ *   [ESP8266][IPD] Parsed length: 4
+ *   [ESP8266][IPD] Received 4 bytes:
+ *   40 02 00 0A 
+ *   [ESP8266][IPD] Classified as: ACK
+ *   @endcode
+ *   注意：中间状态（如 GOT_I/GOT_P）仅在出错时打印日志，成功路径保持静默。
+ *
+ * @warning 本函数非线程安全，多任务环境下需加互斥锁保护
+ */
+esp8266_ipd_frame_t ESP8266_GetIPD(uint16_t timeout_ms)
+{
+    /* ------------------------ 状态机持久化变量 ------------------------ */
+    static enum {
+        STATE_IDLE,
+        STATE_GOT_PLUS,
+        STATE_GOT_I,
+        STATE_GOT_P,
+        STATE_GOT_D,
+        STATE_AFTER_D,
+        STATE_PARSING_LEN,
+        STATE_RECEIVING_DATA
+    } state = STATE_IDLE;
+
+	
+    static uint16_t expected_len = 0U;
+    static uint16_t received_len = 0U;
+	static uint8_t data_buf[IPD_BUFFER_SIZE];
+    static char     len_str[6] = {0};
+    static uint8_t  len_idx = 0U;
+
+    /* ------------------------ 初始化 ------------------------ */
+    cbuf_handle_t rx_cbuf = BSP_USARTX_GetRxCbuf(BSP_ESP8266_USARTx);
+    if (!rx_cbuf) {
+        ESP8266_LOG_IPD("RX buffer not ready");
+        return (esp8266_ipd_frame_t){ .valid = false };
+    }
+
+    const uint32_t start_tick = SysTick_Get();
+
+    /* ------------------------ 主循环 ------------------------ */
+    while (1) {
+        // 超时检测
+        if ((timeout_ms > 0U) && ((SysTick_Get() - start_tick) >= timeout_ms)) {
+            if (state != STATE_IDLE) {
+                ESP8266_LOG_IPD("Timeout in state %d, resetting", (int)state);
+            }
+            state = STATE_IDLE;
+            expected_len = 0U;
+            received_len = 0U;
+            len_idx = 0U;
+            return (esp8266_ipd_frame_t){ .valid = false };
+        }
+
+        if (circular_buf_size(rx_cbuf) == 0U) {
+            if (timeout_ms == 0U) {
+                return (esp8266_ipd_frame_t){ .valid = false };
+            }
+            Delay_ms(1);
+            continue;
+        }
+
+        uint8_t byte;
+        if (circular_buf_get(rx_cbuf, &byte) != 0) {
+            continue;
+        }
+
+        // === 调试：打印原始字节流（可选，谨慎使用）===
+        // ESP8266_LOG_IPD("RX: 0x%02X ('%c')", byte, isprint(byte) ? byte : '.');
+
+        /* ------------------------ 状态机 ------------------------ */
+        switch (state) {
+            case STATE_IDLE:
+                if (byte == '+') {
+                    state = STATE_GOT_PLUS;
+                    ESP8266_LOG_IPD("Detected '+'");
+                }
+                break;
+
+            case STATE_GOT_PLUS:
+                state = (byte == 'I') ? STATE_GOT_I : STATE_IDLE;
+                if (state == STATE_IDLE) {
+                    ESP8266_LOG_IPD("Expected 'I' after '+', got 0x%02X", byte);
+                }
+                break;
+
+            case STATE_GOT_I:
+                state = (byte == 'P') ? STATE_GOT_P : STATE_IDLE;
+                if (state == STATE_IDLE) {
+                    ESP8266_LOG_IPD("Expected 'P' after '+I', got 0x%02X", byte);
+                }
+                break;
+
+            case STATE_GOT_P:
+                state = (byte == 'D') ? STATE_GOT_D : STATE_IDLE;
+                if (state == STATE_IDLE) {
+                    ESP8266_LOG_IPD("Expected 'D' after '+IP', got 0x%02X", byte);
+                }
+                break;
+
+            case STATE_GOT_D:
+                state = (byte == ',') ? STATE_AFTER_D : STATE_IDLE;
+                if (state == STATE_IDLE) {
+                    ESP8266_LOG_IPD("Expected ',' after '+IPD', got 0x%02X", byte);
+                }
+                break;
+
+            case STATE_AFTER_D:
+                if (isdigit(byte)) {
+                    len_str[0] = byte;
+                    len_idx = 1U;
+                    state = STATE_PARSING_LEN;
+                    ESP8266_LOG_IPD("Start parsing length, first digit: %c", byte);
+                } else {
+                    ESP8266_LOG_IPD("Invalid char after '+IPD,', got 0x%02X", byte);
+                    state = STATE_IDLE;
+                }
+                break;
+
+            case STATE_PARSING_LEN:
+                if (isdigit(byte) && (len_idx < (sizeof(len_str) - 1U))) {
+                    len_str[len_idx++] = byte;
+                } else if (byte == ':') {
+                    len_str[len_idx] = '\0';
+                    expected_len = (uint16_t)atoi(len_str);
+                    ESP8266_LOG_IPD("Parsed length: %u", expected_len);
+
+                    if ((expected_len == 0U) || (expected_len > sizeof(data_buf))) {
+                        ESP8266_LOG_IPD("Invalid length: %u (max=%u)", expected_len, (uint16_t)sizeof(data_buf));
+                        state = STATE_IDLE;
+                        expected_len = 0U;
+                    } else {
+                        received_len = 0U;
+                        state = STATE_RECEIVING_DATA;
+                    }
+                    len_idx = 0U;
+                } else if (byte == ',') {
+                    // 多连接模式：跳过 conn_id
+                    len_idx = 0U;
+                    ESP8266_LOG_IPD("Multi-connection mode detected, skipping conn_id");
+                } else {
+                    ESP8266_LOG_IPD("Unexpected char in length field: 0x%02X", byte);
+                    state = STATE_IDLE;
+                    len_idx = 0U;
+                }
+                break;
+
+            case STATE_RECEIVING_DATA:
+                if (received_len < sizeof(data_buf)) {
+                    data_buf[received_len++] = byte;
+                }
+                if (received_len >= expected_len) {
+					esp8266_ipd_type_t type = classify_ipd_data(data_buf, expected_len);
+					
+#ifdef ESP8266_DEBUG_IPD     //调试用
+					ESP8266_LOG_IPD("Received %u bytes:", expected_len);
+					for (uint16_t i = 0; i < expected_len; i++) {
+						if (i > 0 && i % 16 == 0) ESP8266_LOG_IPD("");
+						Serial_Printf(USART_DEBUG, "%02X ", data_buf[i]);
+					}
+					Serial_Printf(USART_DEBUG, "\r\n");
+
+					const char* type_str[] = {
+						"UNKNOWN", "ACK", "ONENET_CMD", "CUSTOM"
+					};
+					ESP8266_LOG_IPD("Classified as: %s", 
+						(type <= ESP8266_IPD_TYPE_CUSTOM) ? type_str[type] : "INVALID");
+#endif
+
+                    // 重置状态机
+                    state = STATE_IDLE;
+                    expected_len = 0U;
+                    received_len = 0U;
+                    len_idx = 0U;
+
+                    return (esp8266_ipd_frame_t){
+                        .data  = data_buf,
+                        .len   = expected_len,
+                        .type  = type,
+                        .valid = (type != ESP8266_IPD_TYPE_UNKNOWN)
+                    };
+                }
+                break;
+
+            default:
+                ESP8266_LOG_IPD("Unknown state %d, resetting", (int)state);
+                state = STATE_IDLE;
+                len_idx = 0U;
+                break;
+        }
+    }
 }

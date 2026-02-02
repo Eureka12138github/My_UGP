@@ -747,16 +747,6 @@
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_xm7903.h</FilePath>
             </File>
             <File>
-              <FileName>bsp_esp8266.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_esp8266.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_esp8266.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_esp8266.h</FilePath>
-            </File>
-            <File>
               <FileName>bsp_usart.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.c</FilePath>
@@ -835,16 +825,6 @@
               <FileName>OLED_UI_MenuData.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\OLED_UI_MenuData.h</FilePath>
-            </File>
-            <File>
-              <FileName>esp8266.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\esp8266.c</FilePath>
-            </File>
-            <File>
-              <FileName>esp8266.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\esp8266.h</FilePath>
             </File>
             <File>
               <FileName>hmac_sha1.c</FileName>

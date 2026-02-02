@@ -288,155 +288,97 @@ _Bool OneNET_RegisterDevice(void)
 }
 #endif
 
-/**
- * @brief 与OneNET平台建立设备连接
- * 
- * 该函数实现设备与OneNET物联网平台的MQTT连接建立过程，
- * 包括生成鉴权Token、构建CONNECT包、发送连接请求以及处理CONNACK响应。
- * 
- * @return unsigned char 连接结果状态码
- *         - 0: 连接成功
- *         - 1: 鉴权失败
- *         - 2: MQTT包构造失败
- *         - 3: 等待响应超时
- *         - 4: 接收到非CONNACK包
- *         - 5: CONNACK数据包格式错误
- *         - 6: 协议版本不可接受
- *         - 7: 客户端标识符被拒绝
- *         - 8: 服务端不可用
- *         - 9: 用户名或密码错误
- *         - 10: 未授权连接
- *         - 11: 未知连接错误
- */
 unsigned char OneNet_DevLink(void)
 {
-    // MQTT数据包结构体，用于存储构建的CONNECT数据包
     MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};
-    // 接收数据指针
-    unsigned char *dataPtr;
-    // 存储鉴权令牌的缓冲区
     char authorization_buf[160];
-    // 返回结果，默认为鉴权失败
     unsigned char result = 1;
-    // CONNACK返回码
     unsigned char connack_code = 0;
+	esp8266_ipd_frame_t frame = {0};
 
-    // 记录连接开始日志
     ONENET_LOG_CONN("Starting device connection to OneNET...");
 
     // 步骤1: 生成鉴权Token
-    // 使用OneNET的标准鉴权算法生成连接所需的认证令牌
-    if (OneNET_Authorization("2018-10-31",      // API版本号
-                            ONENET_PROID,       // 产品ID
-                            1956499200,         // 时间戳（需根据实际情况调整）
-                            ONENET_ACCESS_KEY,  // 访问密钥
-                            ONENET_DEVICE_NAME, // 设备名称
-                            authorization_buf,  // 输出缓冲区
-                            sizeof(authorization_buf), // 缓冲区大小
-                            0) != 0) {         // 其他参数
+    if (OneNET_Authorization("2018-10-31",
+                            ONENET_PROID,
+                            1956499200,
+                            ONENET_ACCESS_KEY,
+                            ONENET_DEVICE_NAME,
+                            authorization_buf,
+                            sizeof(authorization_buf),
+                            0) != 0) {
         ONENET_LOG_CONN("ERROR: Failed to generate authorization token");
-        result = 1;  // 设置错误码：鉴权失败
-        goto exit;   // 跳转到退出清理部分
+        result = 1;
+        goto exit;
     }
 
     ONENET_LOG_CONN("Authorization token generated successfully");
 
     // 步骤2: 构建MQTT CONNECT数据包
-    // 使用产品ID、鉴权令牌、设备名等信息构建标准MQTT连接包
-    if (MQTT_PacketConnect(ONENET_PROID,           // 产品ID
-                          authorization_buf,      // 鉴权令牌
-                          ONENET_DEVICE_NAME,     // 设备名称
-                          256,                    // Keep-alive时间（秒）
-                          1,                      // 清除会话标志位
-                          MQTT_QOS_LEVEL0,        // QoS等级
-                          NULL,                   // Will Topic（可选）
-                          NULL,                   // Will Message（可选）
-                          0,                      // Will消息长度
-                          &mqttPacket) != 0) {    // 输出MQTT包结构
+    if (MQTT_PacketConnect(ONENET_PROID,
+                          authorization_buf,
+                          ONENET_DEVICE_NAME,
+                          256,
+                          1,
+                          MQTT_QOS_LEVEL0,
+                          NULL,
+                          NULL,
+                          0,
+                          &mqttPacket) != 0) {
         ONENET_LOG_CONN("ERROR: Failed to construct MQTT CONNECT packet");
-        result = 2;  // 设置错误码：MQTT包构造失败
-        goto exit;   // 跳转到退出清理部分
+        result = 2;
+        goto exit;
     }
 
     ONENET_LOG_CONN("Sending MQTT CONNECT packet (%u bytes)...", mqttPacket._len);
 
-    // 步骤3: 发送CONNECT数据包到网络
-    // 通过ESP8266模块发送构建好的连接请求
+    // 步骤3: 发送CONNECT数据包
     ESP8266_SendData(mqttPacket._data, mqttPacket._len);
 
-    // 步骤4: 等待并接收CONNACK响应
-    // 等待OneNET平台返回连接确认响应
+    // ✅ 步骤4: 等待并接收CONNACK响应（使用新接口）
     ONENET_LOG_CONN("Waiting for CONNACK response (timeout: 250ms)...");
-    dataPtr = ESP8266_GetIPD(250);  // 等待250毫秒
-    if (dataPtr == NULL) {
-        ONENET_LOG_CONN("ERROR: Timeout waiting for CONNACK");
-        result = 3;  // 设置错误码：等待响应超时
-        goto exit;   // 跳转到退出清理部分
+    
+    frame = ESP8266_GetIPD(250); // 阻塞等待最多250ms
+
+    if (!frame.valid) {
+        ONENET_LOG_CONN("ERROR: Timeout or invalid data waiting for CONNACK");
+        result = 3;  // 超时
+        goto exit;
     }
 
-    ONENET_LOG_CONN("Received response data, parsing packet...");
+    // 注意：CONNACK 是平台下发的 MQTT 包，通常包含 '{' 或二进制帧头
+    // 它可能被 classify_ipd_data() 识别为 ONENET_CMD 或 CUSTOM，但一定 valid=true
+    // 所以我们直接使用 frame.data 进行解析
 
-    // 步骤5: 验证接收到的数据包类型
-    // 确认收到的是CONNACK包而不是其他类型的MQTT包
-    if (MQTT_UnPacketRecv(dataPtr) != MQTT_PKT_CONNACK) {
+    ONENET_LOG_CONN("Received response data (%u bytes), parsing packet...", frame.len);
+
+    // ✅ 步骤5: 验证是否为 CONNACK 包
+    if (MQTT_UnPacketRecv((unsigned char*)frame.data) != MQTT_PKT_CONNACK) {
         ONENET_LOG_CONN("ERROR: Received non-CONNACK packet");
-        result = 4;  // 设置错误码：非CONNACK包
-        goto exit;   // 跳转到退出清理部分
+        result = 4;
+        goto exit;
     }
 
-    // 步骤6: 解析CONNACK包内容并处理返回码
-    // 获取连接确认包中的返回码，并根据码值判断连接结果
-    connack_code = MQTT_UnPacketConnectAck(dataPtr);
+    // ✅ 步骤6: 解析 CONNACK 返回码
+    connack_code = MQTT_UnPacketConnectAck((unsigned char*)frame.data);
     ONENET_LOG_CONN("CONNACK return code: %u", connack_code);
 
-    // 根据CONNACK返回码设置相应的错误状态
     switch (connack_code) {
         case 0:
-            // 连接成功
             ONENET_LOG_CONN("Connection established successfully!");
             result = 0;
             break;
-        case 1:
-            // 不支持的协议版本
-            ONENET_LOG_CONN("ERROR: Protocol version not accepted (code=1)");
-            result = 6;
-            break;
-        case 2:
-            // 客户端标识符被拒绝
-            ONENET_LOG_CONN("ERROR: Client ID rejected (code=2)");
-            result = 7;
-            break;
-        case 3:
-            // 服务器不可用
-            ONENET_LOG_CONN("ERROR: Server unavailable (code=3)");
-            result = 8;
-            break;
-        case 4:
-            // 用户名或密码错误
-            ONENET_LOG_CONN("ERROR: Username or password incorrect (code=4)");
-            result = 9;
-            break;
-        case 5:
-            // 未授权连接
-            ONENET_LOG_CONN("ERROR: Unauthorized connection (code=5)");
-            result = 10;
-            break;
-        case 255:
-            // CONNACK包格式错误
-            ONENET_LOG_CONN("ERROR: CONNACK packet format error (invalid length or flags)");
-            result = 5;
-            break;
-        default:
-            // 未知的返回码
-            ONENET_LOG_CONN("ERROR: Unknown CONNACK return code: %u", connack_code);
-            result = 11;
-            break;
+        case 1: result = 6; ONENET_LOG_CONN("ERROR: Protocol version not accepted (code=1)"); break;
+        case 2: result = 7; ONENET_LOG_CONN("ERROR: Client ID rejected (code=2)"); break;
+        case 3: result = 8; ONENET_LOG_CONN("ERROR: Server unavailable (code=3)"); break;
+        case 4: result = 9; ONENET_LOG_CONN("ERROR: Username or password incorrect (code=4)"); break;
+        case 5: result = 10; ONENET_LOG_CONN("ERROR: Unauthorized connection (code=5)"); break;
+        case 255: result = 5; ONENET_LOG_CONN("ERROR: CONNACK packet format error"); break;
+        default: result = 11; ONENET_LOG_CONN("ERROR: Unknown CONNACK return code: %u", connack_code); break;
     }
 
 exit:
-    // 释放MQTT数据包占用的内存资源
     MQTT_DeleteBuffer(&mqttPacket);
-    // 返回连接结果
     return result;
 }
 
@@ -543,9 +485,9 @@ int8_t OneNet_SendData(void)
 
     // 发送数据
     sentBytes = ESP8266_SendData(mqttPacket._data, mqttPacket._len);
-    ONENET_LOG_SEND("Already Sent %u bytes!", sentBytes, mqttPacket._len);
+    ONENET_LOG_SEND("Already Sent %u bytes!",mqttPacket._len);
 
-    if (!sentBytes) {
+    if (sentBytes) {
         ONENET_LOG_SEND("ERROR: Incomplete send!");
         ret = -2;
         goto cleanup;
