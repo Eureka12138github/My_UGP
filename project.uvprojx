@@ -337,7 +337,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Start;.\User;.\Library;.\System;.\Hardware;.\CJSON;.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party;.\Test;.\Drivers</IncludePath>
+              <IncludePath>.\Start;.\User;.\Library;.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party;.\Test;.\Drivers;.\App\cloud;.\Middlewares\Utils\buffer;.\Middlewares\Utils\crypto;.\Middlewares\Utils\debug;.\Middlewares\Protocols\mqtt;.\Middlewares\Display;.\Middlewares\Display\Fonts;.\App\ui\ui_framework;.\App\ui\ui_conten;.\App\log;.\App\storage</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -644,71 +644,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>System</GroupName>
-          <Files>
-            <File>
-              <FileName>MyFLASH.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\System\MyFLASH.c</FilePath>
-            </File>
-            <File>
-              <FileName>MyFLASH.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\System\MyFLASH.h</FilePath>
-            </File>
-            <File>
-              <FileName>Store.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\System\Store.c</FilePath>
-            </File>
-            <File>
-              <FileName>Store.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\System\Store.h</FilePath>
-            </File>
-            <File>
-              <FileName>Timer.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\System\Timer.c</FilePath>
-            </File>
-            <File>
-              <FileName>Timer.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\System\Timer.h</FilePath>
-            </File>
-            <File>
-              <FileName>MYIWD.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\System\MYIWD.c</FilePath>
-            </File>
-            <File>
-              <FileName>MYIWD.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\System\MYIWD.h</FilePath>
-            </File>
-            <File>
-              <FileName>MyRTC.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\System\MyRTC.c</FilePath>
-            </File>
-            <File>
-              <FileName>MyRTC.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\System\MyRTC.h</FilePath>
-            </File>
-            <File>
-              <FileName>Delay.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\System\Delay.c</FilePath>
-            </File>
-            <File>
-              <FileName>Delay.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\System\Delay.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>BSP</GroupName>
           <Files>
             <File>
@@ -756,6 +691,76 @@
               <FileType>5</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_ui_input.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_ui_input.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_ui_input.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_ui_input.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_alarm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_alarm.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_alarm.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_alarm.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_delay.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_delay.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_delay.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_delay.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_flash.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_flash.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_iwdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_iwdg.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_iwdg.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_iwdg.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_rtc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_rtc.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_timer.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_timer.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -771,150 +776,90 @@
               <FileType>5</FileType>
               <FilePath>.\Drivers\esp8266_drv.h</FilePath>
             </File>
+            <File>
+              <FileName>dht11_drv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Drivers\dht11_drv.c</FilePath>
+            </File>
+            <File>
+              <FileName>dht11_drv.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Drivers\dht11_drv.h</FilePath>
+            </File>
+            <File>
+              <FileName>pms7003_drv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Drivers\pms7003_drv.c</FilePath>
+            </File>
+            <File>
+              <FileName>pms7003_drv.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Drivers\pms7003_drv.h</FilePath>
+            </File>
+            <File>
+              <FileName>xm7903_drv.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Drivers\xm7903_drv.c</FilePath>
+            </File>
+            <File>
+              <FileName>xm7903_drv.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Drivers\xm7903_drv.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
-          <GroupName>Hardware</GroupName>
+          <GroupName>APP</GroupName>
           <Files>
             <File>
-              <FileName>OLED.c</FileName>
+              <FileName>menu_data.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED.c</FilePath>
+              <FilePath>.\App\ui\ui_conten\menu_data.c</FilePath>
             </File>
             <File>
-              <FileName>OLED.h</FileName>
+              <FileName>menu_data.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED.h</FilePath>
+              <FilePath>.\App\ui\ui_conten\menu_data.h</FilePath>
             </File>
             <File>
-              <FileName>OLED_Fonts.c</FileName>
+              <FileName>oled_menu.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED_Fonts.c</FilePath>
+              <FilePath>.\App\ui\ui_framework\oled_menu.c</FilePath>
             </File>
             <File>
-              <FileName>OLED_Fonts.h</FileName>
+              <FileName>oled_menu.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED_Fonts.h</FilePath>
+              <FilePath>.\App\ui\ui_framework\oled_menu.h</FilePath>
             </File>
             <File>
-              <FileName>OLED_UI.c</FileName>
+              <FileName>error_warning_log.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED_UI.c</FilePath>
+              <FilePath>.\App\log\error_warning_log.c</FilePath>
             </File>
             <File>
-              <FileName>OLED_UI.h</FileName>
+              <FileName>error_warning_log.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED_UI.h</FilePath>
+              <FilePath>.\App\log\error_warning_log.h</FilePath>
             </File>
             <File>
-              <FileName>OLED_UI_Driver.c</FileName>
+              <FileName>onenet_mqtt.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED_UI_Driver.c</FilePath>
+              <FilePath>.\App\cloud\onenet_mqtt.c</FilePath>
             </File>
             <File>
-              <FileName>OLED_UI_Driver.h</FileName>
+              <FileName>onenet_mqtt.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED_UI_Driver.h</FilePath>
+              <FilePath>.\App\cloud\onenet_mqtt.h</FilePath>
             </File>
             <File>
-              <FileName>OLED_UI_MenuData.c</FileName>
+              <FileName>storage.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED_UI_MenuData.c</FilePath>
+              <FilePath>.\App\storage\storage.c</FilePath>
             </File>
             <File>
-              <FileName>OLED_UI_MenuData.h</FileName>
+              <FileName>storage.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED_UI_MenuData.h</FilePath>
-            </File>
-            <File>
-              <FileName>hmac_sha1.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\hmac_sha1.c</FilePath>
-            </File>
-            <File>
-              <FileName>hmac_sha1.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\hmac_sha1.h</FilePath>
-            </File>
-            <File>
-              <FileName>MqttKit.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\MqttKit.c</FilePath>
-            </File>
-            <File>
-              <FileName>MqttKit.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\MqttKit.h</FilePath>
-            </File>
-            <File>
-              <FileName>onenet.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\onenet.c</FilePath>
-            </File>
-            <File>
-              <FileName>onenet.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\onenet.h</FilePath>
-            </File>
-            <File>
-              <FileName>DHT11.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\DHT11.c</FilePath>
-            </File>
-            <File>
-              <FileName>DHT11.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\DHT11.h</FilePath>
-            </File>
-            <File>
-              <FileName>PMS7003.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\PMS7003.c</FilePath>
-            </File>
-            <File>
-              <FileName>PMS7003.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\PMS7003.h</FilePath>
-            </File>
-            <File>
-              <FileName>Alarm.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\Alarm.c</FilePath>
-            </File>
-            <File>
-              <FileName>Alarm.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\Alarm.h</FilePath>
-            </File>
-            <File>
-              <FileName>XM7903.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\XM7903.c</FilePath>
-            </File>
-            <File>
-              <FileName>XM7903.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\XM7903.h</FilePath>
-            </File>
-            <File>
-              <FileName>CRC16.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\CRC16.c</FilePath>
-            </File>
-            <File>
-              <FileName>CRC16.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\CRC16.h</FilePath>
-            </File>
-            <File>
-              <FileName>ErrorWarningLog.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\ErrorWarningLog.c</FilePath>
-            </File>
-            <File>
-              <FileName>ErrorWarningLog.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\ErrorWarningLog.h</FilePath>
+              <FilePath>.\App\storage\storage.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -977,26 +922,6 @@
               <FilePath>.\Middlewares\Third_Party\base64.h</FilePath>
             </File>
             <File>
-              <FileName>cbuf_slot.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Middlewares\Core\cbuf_slot.c</FilePath>
-            </File>
-            <File>
-              <FileName>cbuf_slot.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Middlewares\Core\cbuf_slot.h</FilePath>
-            </File>
-            <File>
-              <FileName>my_assert.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Middlewares\Core\my_assert.c</FilePath>
-            </File>
-            <File>
-              <FileName>my_assert.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Middlewares\Core\my_assert.h</FilePath>
-            </File>
-            <File>
               <FileName>cJSON.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Middlewares\Third_Party\cJSON.c</FilePath>
@@ -1005,6 +930,76 @@
               <FileName>cJSON.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Middlewares\Third_Party\cJSON.h</FilePath>
+            </File>
+            <File>
+              <FileName>cbuf_slot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Utils\buffer\cbuf_slot.c</FilePath>
+            </File>
+            <File>
+              <FileName>cbuf_slot.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Utils\buffer\cbuf_slot.h</FilePath>
+            </File>
+            <File>
+              <FileName>CRC16.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Utils\crypto\CRC16.c</FilePath>
+            </File>
+            <File>
+              <FileName>CRC16.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Utils\crypto\CRC16.h</FilePath>
+            </File>
+            <File>
+              <FileName>hmac_sha1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Utils\crypto\hmac_sha1.c</FilePath>
+            </File>
+            <File>
+              <FileName>hmac_sha1.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Utils\crypto\hmac_sha1.h</FilePath>
+            </File>
+            <File>
+              <FileName>my_assert.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Utils\debug\my_assert.c</FilePath>
+            </File>
+            <File>
+              <FileName>my_assert.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Utils\debug\my_assert.h</FilePath>
+            </File>
+            <File>
+              <FileName>mqtt_kit.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Protocols\mqtt\mqtt_kit.c</FilePath>
+            </File>
+            <File>
+              <FileName>mqtt_kit.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Protocols\mqtt\mqtt_kit.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Display\OLED.c</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Display\OLED.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED_Fonts.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Middlewares\Display\Fonts\OLED_Fonts.c</FilePath>
+            </File>
+            <File>
+              <FileName>OLED_Fonts.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Middlewares\Display\Fonts\OLED_Fonts.h</FilePath>
             </File>
           </Files>
         </Group>

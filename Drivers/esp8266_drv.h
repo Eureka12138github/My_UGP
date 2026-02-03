@@ -25,7 +25,7 @@
 #include "bsp_config.h"
 #include "debug_config.h"
 #include "project_secrets.h"
-#include "Delay.h"
+#include "bsp_delay.h"
 #include "OLED.h"
 
 /* === 配置宏 === */
