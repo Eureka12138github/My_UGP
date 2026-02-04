@@ -1,6 +1,7 @@
 # Keil MDK 工具生成的中间文件
 Objects/
 Listings/
+Test/
 *.o
 *.axf
 *.hex
