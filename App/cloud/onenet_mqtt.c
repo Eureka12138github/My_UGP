@@ -2,18 +2,21 @@
 	************************************************************
 	************************************************************
 	************************************************************
-	*	文件名： 	onenet.c
+	*	文件名： 	onenet_mqtt.c
 	*
-	*	作者： 		张继瑞
+	*	作者： 		张继瑞、Eureka
 	*
-	*	日期： 		2017-05-08
+	*	日期： 		2017-05-08、2026-02-04
 	*
-	*	版本： 		V1.1
+	*	版本： 		V1.2
 	*
 	*	说明： 		与onenet平台的数据交互接口层
 	*
 	*	修改记录：	V1.0：协议封装、返回判断都在同一个文件，并且不同协议接口不同。
 	*				V1.1：提供统一接口供应用层使用，根据不同协议文件来封装协议相关的内容。
+	*				V1.2：重构下行消息处理逻辑，支持 OneNET 物模型属性设置（/property/set）与响应（set_reply）；
+	*					  增加对 /property/post/reply 回执的解析；完善错误码体系与资源安全释放机制；
+	*					  修复 MQTT PUBLISH 包在 QoS=0 时 pkt_id 传参兼容性问题；优化日志与健壮性。
 	************************************************************
 	************************************************************
 	************************************************************
@@ -27,9 +30,6 @@
 char devid[16];
 
 char key[48];
-
-
-extern unsigned char esp8266_buf[512];
 
 
 /*
@@ -202,91 +202,7 @@ static unsigned char OneNET_Authorization(const char *ver,
 }
 
 
-//==========================================================
-//  ⚠️【已废弃】函数名称：OneNET_RegisterDevice
-//
-//  说明：
-//    - 此函数基于 OneNET 旧版 API（/mqtt/v1/devices/reg）
-//    - 存在硬编码、脆弱解析、安全风险等问题
-//    - **不适用于量产或正式项目**
-//    - 仅作历史参考，动态注册应通过新版 API + 安全设计实现
-//    - 当前项目采用【预注册设备】方案（devid/key 硬编码于配置）
-//
-//  替代方案：手动在 OneNET 控制台创建设备，使用固定凭证连接
-//==========================================================
-#if 0  // 废弃：动态注册功能（存在安全与兼容性问题）
-_Bool OneNET_RegisterDevice(void)
-{
 
-	_Bool result = 1;
-	unsigned short send_len = 11 + strlen(ONENET_DEVICE_NAME);
-	char *send_ptr = NULL, *data_ptr = NULL;
-	
-	char authorization_buf[144];													//加密的key
-	
-	send_ptr = malloc(send_len + 240);
-	if(send_ptr == NULL)
-		return result;
-	
-	while(ESP8266_SendCmd("AT+CIPSTART=\"TCP\",\"183.230.40.33\",80\r\n", "CONNECT"))
-		Delay_ms(500);
-	
-	OneNET_Authorization("2018-10-31", ONENET_PROID, 1956499200, ONENET_ACCESS_KEY, NULL,
-							authorization_buf, sizeof(authorization_buf), 1);
-	
-	snprintf(send_ptr, 240 + send_len, "POST /mqtt/v1/devices/reg HTTP/1.1\r\n"
-					"Authorization:%s\r\n"
-					"Host:ota.heclouds.com\r\n"
-					"Content-Type:application/json\r\n"
-					"Content-Length:%d\r\n\r\n"
-					"{\"name\":\"%s\"}",
-	
-					authorization_buf, 11 + strlen(ONENET_DEVICE_NAME), ONENET_DEVICE_NAME);
-	
-	ESP8266_SendData((unsigned char *)send_ptr, strlen(send_ptr));
-	
-	/*
-	{
-	  "request_id" : "f55a5a37-36e4-43a6-905c-cc8f958437b0",
-	  "code" : "onenet_common_success",
-	  "code_no" : "000000",
-	  "message" : null,
-	  "data" : {
-		"device_id" : "589804481",
-		"name" : "mcu_id_43057127",
-		
-	"pid" : 282932,
-		"key" : "indu/peTFlsgQGL060Gp7GhJOn9DnuRecadrybv9/XY="
-	  }
-	}
-	*/
-	
-	data_ptr = (char *)ESP8266_GetIPD(250);							//等待平台响应
-	
-	if(data_ptr)
-	{
-		data_ptr = strstr(data_ptr, "device_id");
-	}
-	
-	if(data_ptr)
-	{
-		char name[16];
-		int pid = 0;
-		
-		if(sscanf(data_ptr, "device_id\" : \"%[^\"]\",\r\n\"name\" : \"%[^\"]\",\r\n\r\n\"pid\" : %d,\r\n\"key\" : \"%[^\"]\"", devid, name, &pid, key) == 4)
-		{
-//			UsartPrintf(USART_DEBUG, "create device: %s, %s, %d, %s\r\n", devid, name, pid, key);
-			result = 0;
-		}
-	}
-	
-	free(send_ptr);
-	ESP8266_SendCmd("AT+CIPCLOSE\r\n", "OK");
-	
-	return result;
-
-}
-#endif
 
 unsigned char OneNet_DevLink(void)
 {
@@ -346,9 +262,6 @@ unsigned char OneNet_DevLink(void)
         goto exit;
     }
 
-    // 注意：CONNACK 是平台下发的 MQTT 包，通常包含 '{' 或二进制帧头
-    // 它可能被 classify_ipd_data() 识别为 ONENET_CMD 或 CUSTOM，但一定 valid=true
-    // 所以我们直接使用 frame.data 进行解析
 
     ONENET_LOG_CONN("Received response data (%u bytes), parsing packet...", frame.len);
 
@@ -450,7 +363,7 @@ int8_t OneNet_SendData(void)
     MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};
     char payloadBuf[256];
     int8_t ret = -3;
-    bool sentBytes = false;
+    bool send_result = 1;
     int body_len = 0;  // 注意：现在使用 int 类型（与 OneNet_FillBuf 返回值一致）
 
     memset(payloadBuf, 0, sizeof(payloadBuf));
@@ -474,20 +387,20 @@ int8_t OneNet_SendData(void)
     }
 
     // 将 payload 填入 MQTT 包
-    for (int i = 0; i < body_len; i++) {  // 使用 int 索引更安全
-        if (mqttPacket._len >= mqttPacket._size) {
-            ONENET_LOG_SEND("ERROR: Buffer overflow during payload fill!");
-            ret = -4;
-            goto cleanup;
-        }
-        mqttPacket._data[mqttPacket._len++] = payloadBuf[i];
-    }
+	if (mqttPacket._len + body_len > mqttPacket._size) {
+		ONENET_LOG_SEND("ERROR: Not enough space for payload (need %d, have %u)!", 
+						body_len, mqttPacket._size - mqttPacket._len);
+		ret = -4;
+		goto cleanup;
+	}
+	memcpy(&mqttPacket._data[mqttPacket._len], payloadBuf, body_len);
+	mqttPacket._len += body_len;
 
     // 发送数据
-    sentBytes = ESP8266_SendData(mqttPacket._data, mqttPacket._len);
+    send_result  = ESP8266_SendData(mqttPacket._data, mqttPacket._len);
     ONENET_LOG_SEND("Already Sent %u bytes!",mqttPacket._len);
 
-    if (sentBytes) {
+    if (send_result) {
         ONENET_LOG_SEND("ERROR: Incomplete send!");
         ret = -2;
         goto cleanup;
@@ -543,322 +456,274 @@ void OneNET_Publish(const char *topic, const char *msg)
 //==========================================================
 void OneNET_Subscribe(void)
 {
-	
-	MQTT_PACKET_STRUCTURE mqtt_packet = {NULL, 0, 0, 0};						//协议包
-	
-	char topic_buf[56];
-	const char *topic = topic_buf;
-	//"$sys/%s/%s/thing/property/set"
-	snprintf(topic_buf, sizeof(topic_buf), "$sys/%s/%s/thing/property/set", ONENET_PROID, ONENET_DEVICE_NAME);
-	
-//	UsartPrintf(USART_DEBUG, "Subscribe Topic: %s\r\n", topic_buf);
-	
-	if(MQTT_PacketSubscribe(MQTT_SUBSCRIBE_ID, MQTT_QOS_LEVEL0, &topic, 1, &mqtt_packet) == 0)
-	{
-		ESP8266_SendData(mqtt_packet._data, mqtt_packet._len);					//向平台发送订阅请求
-		
-		MQTT_DeleteBuffer(&mqtt_packet);										//删包
-	}
-
+    MQTT_PACKET_STRUCTURE mqtt_packet = {NULL, 0, 0, 0};
+    char topic1[56], topic2[56];
+    
+    // 主题1：接收平台下发命令
+    snprintf(topic1, sizeof(topic1), "$sys/%s/%s/thing/property/set", ONENET_PROID, ONENET_DEVICE_NAME);
+    // 主题2：接收平台对上报数据的回执
+    snprintf(topic2, sizeof(topic2), "$sys/%s/%s/thing/property/post/reply", ONENET_PROID, ONENET_DEVICE_NAME);
+    
+    const char *topics[] = {topic1, topic2};
+    
+    if (MQTT_PacketSubscribe(MQTT_SUBSCRIBE_ID, MQTT_QOS_LEVEL1, topics, 2, &mqtt_packet) == 0)
+    {
+        ESP8266_SendData(mqtt_packet._data, mqtt_packet._len);
+        MQTT_DeleteBuffer(&mqtt_packet);
+    }
 }
 
 
-////==========================================================
-// 函数名称：   OneNet_RevPro
-// 功能：       处理 OneNet 平台下发的 MQTT 消息
-// 入口参数：   cmd - 接收到的原始数据包（来自 ESP8266 的 +IPD 数据）
-// 返回值：     0 - 成功处理；1 - 解析或处理失败
-//==========================================================
+/**
+ * @brief OneNET平台下行消息处理函数
+ * 
+ * 该函数负责解析和处理来自OneNET平台的MQTT下行消息，包括：
+ * 1. 属性设置指令 (/thing/property/set)
+ * 2. 属性上报响应 (/thing/property/post/reply)
+ * 3. 其他MQTT控制包 (PUBACK, SUBACK等)
+ * 
+ * @param[in] cmd 指向MQTT接收数据包的指针
+ * @return u8 返回处理结果状态码
+ *         - ONENET_OK: 处理成功
+ *         - ONENET_PARSE_ERR: 解析错误
+ *         - ONENET_SET_HANDLED: 属性设置指令已处理
+ *         - ONENET_POST_SUCCESS: 属性上报成功
+ *         - ONENET_POST_FAILED: 属性上报失败
+ * 
+ * @note 该函数采用goto语句统一资源清理，确保内存安全释放
+ * @note 支持QoS 0的快速响应机制
+ */
 u8 OneNet_RevPro(unsigned char *cmd)
 {
-    // 用于保存从 MQTT 包中解析出的 payload（即 JSON 内容）
-    char *req_payload = NULL;
-    // 用于保存从 MQTT 包中解析出的主题（topic）
-    char *cmdid_topic = NULL;
+    // ==================== 变量声明 ====================
+    char *req_payload = NULL;           ///< MQTT消息载荷数据
+    char *cmdid_topic = NULL;           ///< MQTT主题字符串
+    unsigned short topic_len = 0;       ///< 主题长度
+    unsigned short req_len = 0;         ///< 请求数据长度
+    unsigned char qos = 0;              ///< QoS服务质量等级
+    static unsigned short pkt_id = 0;   ///< 包标识符(静态变量)
+    unsigned char type = 0;             ///< MQTT包类型
+    u8 result = ONENET_OK;              ///< 函数返回结果，默认成功
 
-    // （已注释）原本用于提取命令 ID 字符串
-    // char *id_str = NULL;
+    // JSON对象指针声明
+    cJSON *raw_json = NULL;             ///< 原始JSON数据
+    cJSON *params_json = NULL;          ///< 参数JSON对象
+    cJSON *dust_limit_json = NULL;      ///< 粉尘限制值JSON对象
+    cJSON *noise_limit_json = NULL;     ///< 噪声限制值JSON对象
+    cJSON *id_json = NULL;              ///< 请求ID JSON对象
+    cJSON *msg_json = NULL;             ///< 消息内容JSON对象
+    cJSON *code_json = NULL;            ///< 状态码JSON对象
 
-    // 主题和 payload 的实际长度（单位：字节）
-    unsigned short topic_len = 0;
-    unsigned short req_len = 0;
+    // ==================== 包类型识别 ====================
+    type = MQTT_UnPacketRecv(cmd);      // 解析MQTT包类型
 
-    // QoS 等级（服务质量）
-    unsigned char qos = 0;
-
-    // 静态变量，用于记录最近一次的 MQTT 报文 ID（用于 PUBACK 匹配等）
-    static unsigned short pkt_id = 0;
-
-    // 当前接收到的 MQTT 报文类型（如 PUBLISH、PUBACK 等）
-    unsigned char type = 0;
-
-    // 函数最终返回结果：0 表示成功，1 表示失败
-    int result = 0; // 使用 int 类型避免潜在类型问题
-
-    // cJSON 指针：用于解析 JSON 数据
-    cJSON *raw_json;        // 指向整个 JSON 根对象
-    cJSON *params_json;     // 指向 "params" 子对象
-
-    // （已注释）原用于解析 LED 控制和命令 ID
-    // cJSON *led_json, *id_json;
-
-    // 用于分别指向 JSON 中的 "dust_limit" 和 "noise_limit" 字段
-    cJSON *dust_limit_json; // 解析扬尘阈值
-    cJSON *noise_limit_json; // 解析噪音阈值
-
-    // 第一步：判断接收到的是哪种 MQTT 报文类型
-    type = MQTT_UnPacketRecv(cmd);
-
-    // 根据报文类型分发处理
+    // ==================== 消息分发处理 ====================
     switch (type)
     {
-        // 情况1：收到平台下发的 PUBLISH 消息（即控制指令）
+        // -------------------- PUBLISH消息处理 --------------------
         case MQTT_PKT_PUBLISH:
         {
-            // 调用 MQTT 解包函数，从原始数据中提取 topic 和 payload
-            result = MQTT_UnPacketPublish(
-                cmd,               // 原始数据包
-                &cmdid_topic,      // 输出：主题字符串指针
-                &topic_len,        // 输出：主题长度
-                &req_payload,      // 输出：payload（JSON 字符串）指针
-                &req_len,          // 输出：payload 长度
-                &qos,              // 输出：QoS 等级
-                &pkt_id            // 输出：报文 ID
+            // 解析PUBLISH包基本信息
+            int unpack_result = MQTT_UnPacketPublish(
+                cmd,
+                &cmdid_topic,
+                &topic_len,
+                &req_payload,
+                &req_len,
+                &qos,
+                &pkt_id
             );
 
-            // 如果解包成功（返回 0）
-            if (result == 0)
+            // 包解析失败处理
+            if (unpack_result != 0)
             {
-                // （已注释）调试打印：显示 topic 和 payload 内容
-                // UsartPrintf(USART_DEBUG, "topic: %s, topic_len: %d, payload: %s, payload_len: %d\r\n",
-                //             cmdid_topic, topic_len, req_payload, req_len);
+                result = ONENET_PARSE_ERR;
+                goto cleanup;
+            }
 
-                // 使用 cJSON 解析 payload 中的 JSON 字符串
-                raw_json = cJSON_Parse(req_payload);
-                if (raw_json == NULL)
-                {
-                    // JSON 格式错误，无法解析
-                    // （已注释）UsartPrintf(USART_DEBUG, "Error: JSON 解析失败\r\n");
-                    return 1; // 直接返回失败
-                }
+            // 解析JSON载荷
+            raw_json = cJSON_Parse(req_payload);
+            if (raw_json == NULL)
+            {
+                result = ONENET_PARSE_ERR;
+                goto cleanup;
+            }
 
-                // （已注释）原计划提取命令 ID（"id" 字段），但未启用
-                // id_json = cJSON_GetObjectItem(raw_json, "id");
-                // if (id_json != NULL && (id_json->type == cJSON_String)) {
-                //     id_str = id_json->valuestring;
-                // } else {
-                //     result = 1; // 无效 id 字段
-                // }
+            // ==================== 主题路由处理 ====================
+            // 预定义主题后缀常量
+            const char *set_suffix = "/thing/property/set";           // 属性设置
+            const char *post_suffix = "/thing/property/post/reply";   // 属性上报响应
+            int topic_len_int = (int)topic_len;
+            int set_len = strlen(set_suffix);
+            int post_len = strlen(post_suffix);
 
-                // 从 JSON 根对象中获取 "params" 子对象
+            // -------------------- 属性设置指令处理 --------------------
+            if (topic_len_int >= set_len &&
+                strcmp(cmdid_topic + topic_len_int - set_len, set_suffix) == 0)
+            {
+                // 解析参数对象
                 params_json = cJSON_GetObjectItem(raw_json, "params");
+                if (params_json == NULL || !cJSON_IsObject(params_json))
+                {
+                    ONENET_LOG_PARSE("⚠️ Invalid or missing 'params' in set command");
+                    result = ONENET_PARSE_ERR;
+                    goto cleanup;
+                }
 
-                // 从 "params" 中分别获取 "dust_limit" 和 "noise_limit"
+                // 提取并更新粉尘限制值
                 dust_limit_json = cJSON_GetObjectItem(params_json, "dust_limit");
+                if (dust_limit_json && cJSON_IsNumber(dust_limit_json))
+                {
+                    Dust_Limit = (int)dust_limit_json->valuedouble;
+                    Store_Data[IDX_DUST_LIMIT] = Dust_Limit;
+                    Store_Save();  // 保存到存储
+                }
+
+                // 提取并更新噪声限制值
                 noise_limit_json = cJSON_GetObjectItem(params_json, "noise_limit");
-
-                // （已注释）原计划支持 LED 控制
-                // led_json = cJSON_GetObjectItem(params_json, "led");
-
-                // 如果 "dust_limit" 字段存在，则更新本地扬尘阈值
-                if (dust_limit_json != NULL)
+                if (noise_limit_json && cJSON_IsNumber(noise_limit_json))
                 {
-                    Dust_Limit = dust_limit_json->valueint; // 读取整数值
-                    Store_Data[1] = Dust_Limit;             // 存入全局存储数组
-                    Store_Save();                           // 保存到非易失存储（如 EEPROM/Flash）
+                    Noise_Limit = (int)noise_limit_json->valuedouble;
+                    Store_Data[IDX_NOISE_LIMIT] = Noise_Limit;
+                    Store_Save();  // 保存到存储
                 }
 
-                // 如果 "noise_limit" 字段存在，则更新本地噪音阈值
-                if (noise_limit_json != NULL)
+                // 构造并发送属性设置响应
+                char reply_topic[64];      // 响应主题缓冲区
+                char reply_payload[128];   // 响应载荷缓冲区
+                MQTT_PACKET_STRUCTURE reply_packet = {NULL, 0, 0, 0};  // 响应包结构
+
+                // 构造响应主题
+                snprintf(reply_topic, sizeof(reply_topic),
+                         "$sys/%s/%s/thing/property/set_reply",
+                         ONENET_PROID, ONENET_DEVICE_NAME);
+
+                // 获取请求ID，若不存在则使用默认值
+                id_json = cJSON_GetObjectItem(raw_json, "id");
+                const char *req_id = (id_json && cJSON_IsString(id_json)) ? 
+                                   id_json->valuestring : "123";
+
+                // 构造响应JSON
+                snprintf(reply_payload, sizeof(reply_payload),
+                         "{\"id\":\"%s\",\"code\":200,\"msg\":\"success\"}",
+                         req_id);
+
+                ONENET_LOG_PARSE("Sending set_reply: %s", reply_payload);
+
+                // 发送MQTT响应包(QoS 0 - 快速响应)
+                if (MQTT_PacketPublish(0,                    // Packet ID (QoS 0无需)
+                                       reply_topic,          // 响应主题
+                                       reply_payload,        // 响应载荷
+                                       strlen(reply_payload), // 载荷长度
+                                       MQTT_QOS_LEVEL0,      // QoS 0 - 最多一次
+                                       0,                    // retain标志
+                                       1,                    // own标志
+                                       &reply_packet) == 0)  // 包结构指针
                 {
-                    Noise_Limit = noise_limit_json->valueint;
-                    Store_Data[2] = Noise_Limit;
-                    Store_Save();
+                    ESP8266_SendData(reply_packet._data, reply_packet._len);
+                    MQTT_DeleteBuffer(&reply_packet);  // 释放包内存
+                }
+                else
+                {
+                    ONENET_LOG_PARSE("ERROR: Failed to create set_reply packet!");
                 }
 
-                // （已注释）LED 控制逻辑（未启用）
-                // if (led_json != NULL) {
-                //     LedMode = led_json->type;
-                //     Led_Set(led_json->type == cJSON_True ? LED_ON1 : LED_OFF1);
-                // }
-
-                // 释放 cJSON 占用的内存
-                cJSON_Delete(raw_json);
+                result = ONENET_SET_HANDLED;  // 设置处理完成状态
             }
+            
+            // -------------------- 属性上报响应处理 --------------------
+            else if (topic_len_int >= post_len &&
+                     strcmp(cmdid_topic + topic_len_int - post_len, post_suffix) == 0)
+            {
+                // 解析响应消息和状态码
+                msg_json = cJSON_GetObjectItem(raw_json, "msg");
+                code_json = cJSON_GetObjectItem(raw_json, "code");
+
+                // 验证响应格式有效性
+                if (msg_json && code_json && 
+                    cJSON_IsString(msg_json) && cJSON_IsNumber(code_json))
+                {
+                    // 判断上报是否成功
+                    if (strcmp(msg_json->valuestring, "success") == 0 && 
+                        code_json->valueint == 200)
+                    {
+                        ONENET_LOG_PARSE("[OK] Property post success");
+                        result = ONENET_POST_SUCCESS;
+                    }
+                    else
+                    {
+                        ONENET_LOG_PARSE("[ERR] Property post failed! code=%d, msg=%s",
+                                         code_json->valueint, msg_json->valuestring);
+                        result = ONENET_POST_FAILED;
+                    }
+                }
+                else
+                {
+                    ONENET_LOG_PARSE("[WARN] Cannot parse post/reply response");
+                    result = ONENET_PARSE_ERR;
+                }
+            }
+            
+            // -------------------- 其他主题处理 --------------------
             else
             {
-                // MQTT 解包失败，标记为错误
-                result = 1;
-            }
-            break; // 退出 switch（防止 fall-through）
-        }
-
-        // 情况2：收到平台对 PUBLISH 消息的确认（PUBACK）
-        case MQTT_PKT_PUBACK:
-        {
-            // 尝试解析 PUBACK 报文
-            if (MQTT_UnPacketPublishAck(cmd) == 0)
-            {
-                // （已注释）成功收到 PUBACK，可打印提示
-                // UsartPrintf(USART_DEBUG, "Tips: MQTT Publish Send OK\r\n");
-            }
-            else
-            {
-                // 解析失败，标记错误
-                result = 1;
+                // 无特殊处理需求，视为协议处理成功
+                result = ONENET_OK;
             }
             break;
         }
 
-        // 情况3：收到平台对 SUBSCRIBE 消息的确认（SUBACK）
+        // -------------------- PUBACK确认包处理 --------------------
+        case MQTT_PKT_PUBACK:
+        {
+            if (MQTT_UnPacketPublishAck(cmd) == 0)
+            {
+                result = ONENET_OK;
+            }
+            else
+            {
+                result = ONENET_PARSE_ERR;
+            }
+            break;
+        }
+
+        // -------------------- SUBACK订阅确认处理 --------------------
         case MQTT_PKT_SUBACK:
         {
             if (MQTT_UnPacketSubscribe(cmd) == 0)
             {
-                // （已注释）订阅成功
-                // UsartPrintf(USART_DEBUG, "Tips: MQTT Subscribe OK\r\n");
+                result = ONENET_OK;
             }
             else
             {
-                // （已注释）订阅失败
-                // UsartPrintf(USART_DEBUG, "Tips: MQTT Subscribe Err\r\n");
-                result = 1;
+                result = ONENET_PARSE_ERR;
             }
             break;
         }
 
-        // 其他未知报文类型
+        // -------------------- 未知包类型处理 --------------------
         default:
-            result = 1; // 标记为处理失败
+            result = ONENET_PARSE_ERR;
             break;
     }
 
-    // （已注释）原计划清空 ESP8266 缓冲区，但未启用
-    // ESP8266_Clear();
-
-    // 如果是 PUBLISH 或 CMD 类型的消息，需要释放 MQTT 解包时分配的内存
-    // （注意：这里有个小问题：MQTT_PKT_CMD 在 switch 中并未处理，可能是历史遗留）
-    if (type == MQTT_PKT_CMD || type == MQTT_PKT_PUBLISH)
+    // ==================== 统一资源清理 ====================
+cleanup:
+    // 仅在处理PUBLISH消息时需要清理资源
+    if (type == MQTT_PKT_PUBLISH)
     {
-        MQTT_FreeBuffer(cmdid_topic);   // 释放主题字符串内存
-        MQTT_FreeBuffer(req_payload);   // 释放 payload 字符串内存
+        if (raw_json) {
+            cJSON_Delete(raw_json);        // 释放JSON对象
+        }
+        if (cmdid_topic) {
+            MQTT_FreeBuffer(cmdid_topic);  // 释放主题内存
+        }
+        if (req_payload) {
+            MQTT_FreeBuffer(req_payload);  // 释放载荷内存
+        }
     }
 
-    // 返回处理结果：0 成功，1 失败
-    return result;
+    return result;  // 返回处理结果
 }
 
-
-
-//==========================================================
-// 函数名称：   OneNet_RevPro（问题代码！）
-// 功能：       处理 OneNet 平台下发的 MQTT 消息
-// 入口参数：   cmd - 接收到的原始数据包
-// 返回值：     0 - 成功处理；1 - 解析/处理失败
-//==========================================================
-//u8 OneNet_RevPro(unsigned char *cmd)
-//{
-//if (cmd == NULL) {
-//	ONENET_LOG_PARSE("Received NULL command");
-//	return 1;
-//}
-
-//char *topic = NULL;
-//char *payload = NULL;
-//unsigned short topic_len = 0, payload_len = 0;
-//u8 type = MQTT_UnPacketRecv(cmd);
-
-//ONENET_LOG_PARSE("MQTT packet type: %d", type);
-
-//switch (type)
-//{
-//	case MQTT_PKT_PUBLISH:
-//	{
-//		if (MQTT_UnPacketPublish(cmd, &topic, &topic_len, &payload, &payload_len, NULL, NULL) != 0) {
-//			ONENET_LOG_PARSE("Failed to unpack PUBLISH packet");
-//			return 1;
-//		}
-
-//		// 打印 topic 和 payload（注意：payload 可能不含 '\0'，需小心打印）
-//		if (topic && topic_len > 0) {
-//			char topic_str[64] = {0};
-//			memcpy(topic_str, topic, (topic_len < 63) ? topic_len : 63);
-//			ONENET_LOG_PARSE("Topic: %s", topic_str);
-//		}
-
-//		if (payload && payload_len > 0) {
-//			char payload_str[256] = {0};
-//			memcpy(payload_str, payload, (payload_len < 255) ? payload_len : 255);
-//			ONENET_LOG_PARSE("Raw Payload (%u bytes): %s", payload_len, payload_str);
-//		} else {
-//			ONENET_LOG_PARSE("Empty or invalid payload!");
-//			MQTT_FreeBuffer(topic);
-//			MQTT_FreeBuffer(payload);
-//			return 1;
-//		}
-
-//		cJSON *root = cJSON_Parse(payload);
-//		if (root == NULL) {
-//			const char *error_ptr = cJSON_GetErrorPtr();
-//			if (error_ptr) {
-//				ONENET_LOG_PARSE("cJSON parse failed at: '%s'", error_ptr);
-//			} else {
-//				ONENET_LOG_PARSE("cJSON parse failed (unknown reason)");
-//			}
-//			MQTT_FreeBuffer(topic);
-//			MQTT_FreeBuffer(payload);
-//			return 1;
-//		}
-
-//		ONENET_LOG_PARSE("cJSON parsed successfully");
-
-//		cJSON *params = cJSON_GetObjectItem(root, "params");
-//		if (params && cJSON_IsObject(params)) {
-//			ONENET_LOG_PARSE("Found 'params' object");
-
-//			cJSON *dust_json = cJSON_GetObjectItem(params, "dust_limit");
-//			cJSON *noise_json = cJSON_GetObjectItem(params, "noise_limit");
-
-//			if (dust_json && cJSON_IsNumber(dust_json)) {
-//				Dust_Limit = dust_json->valueint;
-//				Store_Data[1] = Dust_Limit;
-//				Store_Save();
-//				ONENET_LOG_PARSE("Set dust_limit = %d", Dust_Limit);
-//			} else {
-//				ONENET_LOG_PARSE("dust_limit missing or not a number");
-//			}
-
-//			if (noise_json && cJSON_IsNumber(noise_json)) {
-//				Noise_Limit = noise_json->valueint;
-//				Store_Data[2] = Noise_Limit;
-//				Store_Save();
-//				ONENET_LOG_PARSE("Set noise_limit = %d", Noise_Limit);
-//			} else {
-//				ONENET_LOG_PARSE("noise_limit missing or not a number");
-//			}
-//		} else {
-//			ONENET_LOG_PARSE("'params' field not found or not an object");
-//		}
-
-//		cJSON_Delete(root);
-//		MQTT_FreeBuffer(topic);
-//		MQTT_FreeBuffer(payload);
-//		return 0;
-//	}
-
-//	case MQTT_PKT_PUBACK:
-//		MQTT_UnPacketPublishAck(cmd);
-//		ONENET_LOG_PARSE("Handled PUBACK");
-//		return 0;
-
-//	case MQTT_PKT_SUBACK:
-//		MQTT_UnPacketSubscribe(cmd);
-//		ONENET_LOG_PARSE("Handled SUBACK");
-//		return 0;
-
-//	default:
-//		ONENET_LOG_PARSE("Unhandled packet type: %d", type);
-//		return 1;
-//}
-//}
 

@@ -874,145 +874,292 @@ uint1 MQTT_UnPacketUnSubscribe(uint8 *rev_data)
 //
 //	说明：		
 //==========================================================
+//uint8 MQTT_PacketPublish(uint16 pkt_id, const int8 *topic,
+//						const int8 *payload, uint32 payload_len,
+//						enum MqttQosLevel qos, int32 retain, int32 own,
+//						MQTT_PACKET_STRUCTURE *mqttPacket)
+//{
+
+//	uint32 total_len = 0, topic_len = 0;
+//	uint32 data_len = 0;
+//	int32 len = 0;
+//	uint8 flags = 0;
+//	
+//	//pkt_id检查----------------------------------------------------------------------------
+//	if(pkt_id == 0)
+//		return 1;
+//	
+//	//$dp为系统上传数据点的指令--------------------------------------------------------------
+//	for(topic_len = 0; topic[topic_len] != '\0'; ++topic_len)
+//	{
+//		if((topic[topic_len] == '#') || (topic[topic_len] == '+'))
+//			return 2;
+//	}
+//	
+//	//Publish消息---------------------------------------------------------------------------
+//	flags |= MQTT_PKT_PUBLISH << 4;
+//	
+//	//retain标志----------------------------------------------------------------------------
+//	if(retain)
+//		flags |= 0x01;
+//	
+//	//总长度--------------------------------------------------------------------------------
+//	total_len = topic_len + payload_len + 2;
+//	
+//	//qos级别--主要用于PUBLISH（发布态）消息的，保证消息传递的次数-----------------------------
+//	switch(qos)
+//	{
+//		case MQTT_QOS_LEVEL0:
+//			flags |= MQTT_CONNECT_WILL_QOS0;	//最多一次
+//		break;
+//		
+//		case MQTT_QOS_LEVEL1:
+//			flags |= 0x02;						//最少一次
+//			total_len += 2;
+//		break;
+//		
+//		case MQTT_QOS_LEVEL2:
+//			flags |= 0x04;						//只有一次
+//			total_len += 2;
+//		break;
+//		
+//		default:
+//		return 3;
+//	}
+//	
+//	//分配内存------------------------------------------------------------------------------
+//	if(payload != NULL)
+//	{
+//		if(payload[0] == 2)
+//		{
+//			uint32 data_len_t = 0;
+//			
+//			while(payload[data_len_t++] != '}');
+//			data_len_t -= 3;
+//			data_len = data_len_t + 7;
+//			data_len_t = payload_len - data_len;
+//			
+//			MQTT_NewBuffer(mqttPacket, total_len + 3 - data_len_t);
+//			
+//			if(mqttPacket->_data == NULL)
+//				return 4;
+//			
+//			memset(mqttPacket->_data, 0, total_len + 3 - data_len_t);
+//		}
+//		else
+//		{
+//			MQTT_NewBuffer(mqttPacket, total_len + 5);
+//			
+//			if(mqttPacket->_data == NULL)
+//				return 4;
+//			
+//			memset(mqttPacket->_data, 0, total_len + 5);
+//		}
+//	}
+//	else
+//	{
+//		MQTT_NewBuffer(mqttPacket, total_len + 5);
+//		
+//		if(mqttPacket->_data == NULL)
+//			return 4;
+//		
+//		memset(mqttPacket->_data, 0, total_len + 5);
+//	}
+//	
+///*************************************固定头部***********************************************/
+//	
+//	//固定头部----------------------头部消息-------------------------------------------------
+//	mqttPacket->_data[mqttPacket->_len++] = flags;
+//	
+//	//固定头部----------------------剩余长度值-----------------------------------------------
+//	len = MQTT_DumpLength(total_len, mqttPacket->_data + mqttPacket->_len);
+//	if(len < 0)
+//	{
+//		MQTT_DeleteBuffer(mqttPacket);
+//		return 5;
+//	}
+//	else
+//		mqttPacket->_len += len;
+//	
+///*************************************可变头部***********************************************/
+//	
+//	//可变头部----------------------写入topic长度、topic-------------------------------------
+//	mqttPacket->_data[mqttPacket->_len++] = MOSQ_MSB(topic_len);
+//	mqttPacket->_data[mqttPacket->_len++] = MOSQ_LSB(topic_len);
+//	
+//	strncat((int8 *)mqttPacket->_data + mqttPacket->_len, topic, topic_len);
+//	mqttPacket->_len += topic_len;
+//	if(qos != MQTT_QOS_LEVEL0)
+//	{
+//		mqttPacket->_data[mqttPacket->_len++] = MOSQ_MSB(pkt_id);
+//		mqttPacket->_data[mqttPacket->_len++] = MOSQ_LSB(pkt_id);
+//	}
+//	
+//	//可变头部----------------------写入payload----------------------------------------------
+//	if(payload != NULL)
+//	{
+//		if(payload[0] == 2)
+//		{
+//			memcpy((int8 *)mqttPacket->_data + mqttPacket->_len, payload, data_len);
+//			mqttPacket->_len += data_len;
+//		}
+//		else
+//		{
+//			memcpy((int8 *)mqttPacket->_data + mqttPacket->_len, payload, payload_len);
+//			mqttPacket->_len += payload_len;
+//		}
+//	}
+//	
+//	return 0;
+
+//}
+
 uint8 MQTT_PacketPublish(uint16 pkt_id, const int8 *topic,
-						const int8 *payload, uint32 payload_len,
-						enum MqttQosLevel qos, int32 retain, int32 own,
-						MQTT_PACKET_STRUCTURE *mqttPacket)
+                         const int8 *payload, uint32 payload_len,
+                         enum MqttQosLevel qos, int32 retain, int32 own,
+                         MQTT_PACKET_STRUCTURE *mqttPacket)
 {
+    uint32 total_len = 0, topic_len = 0;
+    uint32 data_len = 0;
+    int32 len = 0;
+    uint8 flags = 0;
 
-	uint32 total_len = 0, topic_len = 0;
-	uint32 data_len = 0;
-	int32 len = 0;
-	uint8 flags = 0;
-	
-	//pkt_id检查----------------------------------------------------------------------------
-	if(pkt_id == 0)
-		return 1;
-	
-	//$dp为系统上传数据点的指令--------------------------------------------------------------
-	for(topic_len = 0; topic[topic_len] != '\0'; ++topic_len)
-	{
-		if((topic[topic_len] == '#') || (topic[topic_len] == '+'))
-			return 2;
-	}
-	
-	//Publish消息---------------------------------------------------------------------------
-	flags |= MQTT_PKT_PUBLISH << 4;
-	
-	//retain标志----------------------------------------------------------------------------
-	if(retain)
-		flags |= 0x01;
-	
-	//总长度--------------------------------------------------------------------------------
-	total_len = topic_len + payload_len + 2;
-	
-	//qos级别--主要用于PUBLISH（发布态）消息的，保证消息传递的次数-----------------------------
-	switch(qos)
-	{
-		case MQTT_QOS_LEVEL0:
-			flags |= MQTT_CONNECT_WILL_QOS0;	//最多一次
-		break;
-		
-		case MQTT_QOS_LEVEL1:
-			flags |= 0x02;						//最少一次
-			total_len += 2;
-		break;
-		
-		case MQTT_QOS_LEVEL2:
-			flags |= 0x04;						//只有一次
-			total_len += 2;
-		break;
-		
-		default:
-		return 3;
-	}
-	
-	//分配内存------------------------------------------------------------------------------
-	if(payload != NULL)
-	{
-		if(payload[0] == 2)
-		{
-			uint32 data_len_t = 0;
-			
-			while(payload[data_len_t++] != '}');
-			data_len_t -= 3;
-			data_len = data_len_t + 7;
-			data_len_t = payload_len - data_len;
-			
-			MQTT_NewBuffer(mqttPacket, total_len + 3 - data_len_t);
-			
-			if(mqttPacket->_data == NULL)
-				return 4;
-			
-			memset(mqttPacket->_data, 0, total_len + 3 - data_len_t);
-		}
-		else
-		{
-			MQTT_NewBuffer(mqttPacket, total_len + 5);
-			
-			if(mqttPacket->_data == NULL)
-				return 4;
-			
-			memset(mqttPacket->_data, 0, total_len + 5);
-		}
-	}
-	else
-	{
-		MQTT_NewBuffer(mqttPacket, total_len + 5);
-		
-		if(mqttPacket->_data == NULL)
-			return 4;
-		
-		memset(mqttPacket->_data, 0, total_len + 5);
-	}
-	
-/*************************************固定头部***********************************************/
-	
-	//固定头部----------------------头部消息-------------------------------------------------
-	mqttPacket->_data[mqttPacket->_len++] = flags;
-	
-	//固定头部----------------------剩余长度值-----------------------------------------------
-	len = MQTT_DumpLength(total_len, mqttPacket->_data + mqttPacket->_len);
-	if(len < 0)
-	{
-		MQTT_DeleteBuffer(mqttPacket);
-		return 5;
-	}
-	else
-		mqttPacket->_len += len;
-	
-/*************************************可变头部***********************************************/
-	
-	//可变头部----------------------写入topic长度、topic-------------------------------------
-	mqttPacket->_data[mqttPacket->_len++] = MOSQ_MSB(topic_len);
-	mqttPacket->_data[mqttPacket->_len++] = MOSQ_LSB(topic_len);
-	
-	strncat((int8 *)mqttPacket->_data + mqttPacket->_len, topic, topic_len);
-	mqttPacket->_len += topic_len;
-	if(qos != MQTT_QOS_LEVEL0)
-	{
-		mqttPacket->_data[mqttPacket->_len++] = MOSQ_MSB(pkt_id);
-		mqttPacket->_data[mqttPacket->_len++] = MOSQ_LSB(pkt_id);
-	}
-	
-	//可变头部----------------------写入payload----------------------------------------------
-	if(payload != NULL)
-	{
-		if(payload[0] == 2)
-		{
-			memcpy((int8 *)mqttPacket->_data + mqttPacket->_len, payload, data_len);
-			mqttPacket->_len += data_len;
-		}
-		else
-		{
-			memcpy((int8 *)mqttPacket->_data + mqttPacket->_len, payload, payload_len);
-			mqttPacket->_len += payload_len;
-		}
-	}
-	
-	return 0;
+    // ===========================================================================
+    // ✅ 修复 pkt_id 检查逻辑：仅 QoS > 0 时要求 pkt_id != 0
+    //    QoS = 0 时 pkt_id 必须为 0（协议规定），但函数允许调用者传任意值（兼容性）
+    // ===========================================================================
+    if (qos != MQTT_QOS_LEVEL0 && pkt_id == 0)
+    {
+        return 1; // QoS 1/2 时 pkt_id 不能为 0
+    }
+    // 注意：QoS=0 时 pkt_id 被忽略，无论传 0 或非 0 都合法
 
+    // $dp为系统上传数据点的指令--------------------------------------------------
+    for(topic_len = 0; topic[topic_len] != '\0'; ++topic_len)
+    {
+        if((topic[topic_len] == '#') || (topic[topic_len] == '+'))
+            return 2;
+    }
+
+    // Publish消息----------------------------------------------------------------
+    flags |= MQTT_PKT_PUBLISH << 4;
+
+    // retain标志-----------------------------------------------------------------
+    if(retain)
+        flags |= 0x01;
+
+    // 总长度---------------------------------------------------------------------
+    total_len = topic_len + payload_len + 2;
+
+    // qos级别--------------------------------------------------------------------
+    switch(qos)
+    {
+        case MQTT_QOS_LEVEL0:
+            flags |= MQTT_CONNECT_WILL_QOS0; // 最多一次
+            break;
+
+        case MQTT_QOS_LEVEL1:
+            flags |= 0x02; // 最少一次
+            total_len += 2;
+            break;
+
+        case MQTT_QOS_LEVEL2:
+            flags |= 0x04; // 只有一次
+            total_len += 2;
+            break;
+
+        default:
+            return 3;
+    }
+
+    // 分配内存-------------------------------------------------------------------
+    if(payload != NULL)
+    {
+        if(payload[0] == 2)
+        {
+            uint32 data_len_t = 0;
+
+            while(payload[data_len_t++] != '}');
+            data_len_t -= 3;
+            data_len = data_len_t + 7;
+            data_len_t = payload_len - data_len;
+
+            MQTT_NewBuffer(mqttPacket, total_len + 3 - data_len_t);
+
+            if(mqttPacket->_data == NULL)
+                return 4;
+
+            memset(mqttPacket->_data, 0, total_len + 3 - data_len_t);
+        }
+        else
+        {
+            MQTT_NewBuffer(mqttPacket, total_len + 5);
+
+            if(mqttPacket->_data == NULL)
+                return 4;
+
+            memset(mqttPacket->_data, 0, total_len + 5);
+        }
+    }
+    else
+    {
+        MQTT_NewBuffer(mqttPacket, total_len + 5);
+
+        if(mqttPacket->_data == NULL)
+            return 4;
+
+        memset(mqttPacket->_data, 0, total_len + 5);
+    }
+
+    /*************************************固定头部***********************************************/
+
+    // 固定头部 - 消息类型和标志
+    mqttPacket->_data[mqttPacket->_len++] = flags;
+
+    // 固定头部 - 剩余长度
+    len = MQTT_DumpLength(total_len, mqttPacket->_data + mqttPacket->_len);
+    if(len < 0)
+    {
+        MQTT_DeleteBuffer(mqttPacket);
+        return 5;
+    }
+    else
+        mqttPacket->_len += len;
+
+    /*************************************可变头部***********************************************/
+
+    // 可变头部 - Topic 长度和内容
+    mqttPacket->_data[mqttPacket->_len++] = MOSQ_MSB(topic_len);
+    mqttPacket->_data[mqttPacket->_len++] = MOSQ_LSB(topic_len);
+
+    strncat((int8 *)mqttPacket->_data + mqttPacket->_len, topic, topic_len);
+    mqttPacket->_len += topic_len;
+
+    // 可变头部 - Packet ID（仅 QoS > 0 时写入）
+    if(qos != MQTT_QOS_LEVEL0)
+    {
+        mqttPacket->_data[mqttPacket->_len++] = MOSQ_MSB(pkt_id);
+        mqttPacket->_data[mqttPacket->_len++] = MOSQ_LSB(pkt_id);
+    }
+
+    // 可变头部 - Payload
+    if(payload != NULL)
+    {
+        if(payload[0] == 2)
+        {
+            memcpy((int8 *)mqttPacket->_data + mqttPacket->_len, payload, data_len);
+            mqttPacket->_len += data_len;
+        }
+        else
+        {
+            memcpy((int8 *)mqttPacket->_data + mqttPacket->_len, payload, payload_len);
+            mqttPacket->_len += payload_len;
+        }
+    }
+
+    return 0;
 }
+
 
 //==========================================================
 //	函数名称：	MQTT_UnPacketPublish

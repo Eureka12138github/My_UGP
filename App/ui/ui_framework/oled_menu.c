@@ -1675,8 +1675,12 @@ void OLED_UI_MainLoop(void){
 	
 	//当互斥锁被置位时，运行当前菜单项的回调函数
 	RunCurrentCallBackFunction();
+
+	
+	
 	//刷屏
-	OLED_Update();
+	//由于外部新增一个函数 Wrap_OLED_UI 包裹 OLED_UI_MainLoop 所以更新统一放到外部，如果单独使用记得取消此注释！
+//	OLED_Update();
 }
 
 

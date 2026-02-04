@@ -23,7 +23,7 @@
 #define Dust_MAX_WAIT_MS 		6000  // 最长合法数据等待时间（如果超过这个时间还没有合法数据来，就会触发对应函数）
 #define Noise_MAX_WAIT_MS 		6000  // 最长合法数据等待时间
 #define ALARM_WRITE_INTERVAL_MS 		10000  // 报警记录周期60秒，此值居然能影响噪音数据接收，为何？
-
+#define ONENET_REPLY_INDICATOR_MS 		20  
 /***********关于数据发送指示圆圆心横坐标x的宏***********/
 #define DATA_SEND_INDICATOR_X 115	
 /***********关于数据发送指示圆圆心纵坐标y的宏***********/
@@ -98,25 +98,36 @@ bool Warning_Show_Flag3 = true;
 // SDA -> PB9
 
 
-/**
- * ⚠️【性能问题】当前 OneNet_SendData() 调用会阻塞主循环约 0.5 秒，
- *     导致 OLED 刷新卡顿。
- *
- * 📌 根本原因：
- *     内部调用 ESP8266_SendCmd(..., ">") 等待 ESP8266 的 ">" 提示符，
- *     该过程为同步阻塞（最长 2 秒），且网络响应本身有延迟。
- *
- * ✅ 解决方案（后续重构）：
- *     将发送流程改为非阻塞状态机：
- *       1. 主循环外启动发送（发 AT+CIPSEND）
- *       2. 主循环定期轮询是否收到 ">"
- *       3. 收到后立即发数据，不阻塞
- *     → 可彻底消除 UI 卡顿。
- *
- * 🔧 临时建议：
- *     避免在主循环高频调用此函数；
- *     仅在必要时（如定时上传）触发，并接受短暂卡顿。
- */
+
+
+// 全局变量
+typedef enum {
+    INDICATOR_OFF,
+    INDICATOR_ON
+} indicator_state_t;
+
+static indicator_state_t g_success_indicator = INDICATOR_OFF;
+static uint32_t g_success_indicator_start_time = 0;
+
+void Trigger_Success_Indicator(void)
+{
+    if (g_success_indicator == INDICATOR_OFF)
+    {
+        g_success_indicator = INDICATOR_ON;
+        g_success_indicator_start_time = SysTick_Get();
+    }
+}
+
+void Update_Success_Indicator(void)
+{
+    if (g_success_indicator == INDICATOR_ON)
+    {
+        if (SysTick_Get() - g_success_indicator_start_time >= 300) // 亮 0.3 秒
+        {
+            g_success_indicator = INDICATOR_OFF;
+        }
+    }
+}
 
 
 /**
@@ -131,20 +142,6 @@ void Data_Send(void) {
     static u8 Send_Data_Error = 0; // 静态变量用于记录连续发送失败次数
 
     if (!OneNet_SendData()) {
-        // 数据发送成功：OLED局部刷新，显示一次闪烁提示
-        OLED_DrawCircle(DATA_SEND_INDICATOR_X, DATA_SEND_INDICATOR_Y,
-                        DATA_SEND_INDICATOR_RADIUS, OLED_FILLED); // 绘制实心圆作为发送指示
-        OLED_UpdateArea(DATA_SEND_INDICATOR_X - DATA_SEND_INDICATOR_RADIUS,
-                        DATA_SEND_INDICATOR_Y - DATA_SEND_INDICATOR_RADIUS,
-                        DATA_SEND_INDICATOR_RADIUS * 2 + 2,
-                        DATA_SEND_INDICATOR_RADIUS * 2 + 2); // 局部刷新OLED显示区域
-
-
-        // 恢复OLED状态：清除指示圆，不影响其他内容显示
-        OLED_ClearArea(DATA_SEND_INDICATOR_X - DATA_SEND_INDICATOR_RADIUS,
-                       DATA_SEND_INDICATOR_Y - DATA_SEND_INDICATOR_RADIUS,
-                       DATA_SEND_INDICATOR_RADIUS * 2 + 2,
-                       DATA_SEND_INDICATOR_RADIUS * 2 + 2);
 
         Send_Data_Error = 0; // 发送成功，清空失败计数器
     } else {
@@ -344,7 +341,10 @@ static TaskComps_t TaskComps[] = {
     {0, Noise_MAX_WAIT_MS, Noise_MAX_WAIT_MS, Noise_Data_Error},
 
     // 报警信息写入任务：每 ALARM_WRITE_INTERVAL_MS ms 执行一次 Write_Warning_Meg
-    {0, ALARM_WRITE_INTERVAL_MS, ALARM_WRITE_INTERVAL_MS, Write_Warning_Meg}
+    {0, ALARM_WRITE_INTERVAL_MS, ALARM_WRITE_INTERVAL_MS, Write_Warning_Meg},
+	
+	// OneNET响应指示状态刷新任务：每 ALARM_WRITE_INTERVAL_MS ms 执行一次 Write_Warning_Meg
+    {0, ONENET_REPLY_INDICATOR_MS, ONENET_REPLY_INDICATOR_MS, Update_Success_Indicator},
 };
 
 
@@ -455,29 +455,75 @@ void Handle_Thresholds(void) {
     }
 }
 
-void Handle_Network_Data(void) {
+void Handle_Network_Data(void)
+{
     static uint8_t error_count = 0;
-    
-    esp8266_ipd_frame_t frame = ESP8266_GetIPD(0); // 非阻塞
 
+    esp8266_ipd_frame_t frame = ESP8266_GetIPD(0); // 非阻塞
 
     if (!frame.valid) {
         return; // 无数据或无效帧
     }
 
     // ✅ 只处理 OneNET 控制指令
-    if (frame.type == ESP8266_IPD_TYPE_ONENET_CMD) {
-        if (OneNet_RevPro((unsigned char*)frame.data) != 0) {
-            error_count++;
-            if (error_count >= 3) {
-                ErrorType(ENV_COMM_DATA_RECEPTION_FAILURE);
-            }
-        } else {
-            error_count = 0;
+    if (frame.type == ESP8266_IPD_TYPE_ONENET_CMD)
+    {
+        u8 status = OneNet_RevPro((unsigned char*)frame.data);
+
+        switch (status)
+        {
+            case ONENET_PARSE_ERR:
+                // 协议或 JSON 解析失败，视为通信异常
+                error_count++;
+                if (error_count >= 3) {
+                    ErrorType(ENV_COMM_DATA_RECEPTION_FAILURE);
+                }
+                break;
+
+            case ONENET_POST_SUCCESS:
+                // 平台确认 property/post 成功
+        // 数据发送成功：OLED局部刷新，显示一次闪烁提示
+				Trigger_Success_Indicator();
+                break;
+
+            case ONENET_POST_FAILED:
+                // 平台拒绝上报（如参数非法、设备未激活等）
+                error_count = 0; // 不视为底层通信错误，但需关注
+                ONENET_LOG_PARSE("⚠️ 上报被平台拒绝，请检查物模型配置");
+                // 可选：触发告警、记录失败次数、暂停上报等
+                break;
+
+            case ONENET_SET_HANDLED:
+                // 成功处理了远程配置（如阈值更新）
+                error_count = 0;
+                ONENET_LOG_PARSE("🔧 已应用远程配置");
+                // 可选：保存配置后重启传感器校准等
+                break;
+
+            case ONENET_OK:
+            default:
+                // 其他正常 MQTT 消息（如 PUBACK、SUBACK、未知 topic）
+                error_count = 0;
+                // 通常无需额外操作，静默处理即可
+                break;
         }
     }
-    // else: ACK 或其他类型，静默丢弃，不计入错误
+    // else: ACK、AT 响应或其他类型帧，静默丢弃，不计入错误
 }
+
+void Wrap_OLED_UI(void) {
+	
+	
+	OLED_UI_MainLoop();	//显示刷新
+	// ✅ 新增：在所有 UI 绘制完成后，叠加成功指示器
+    if (g_success_indicator == INDICATOR_ON)
+    {
+        OLED_DrawCircle(DATA_SEND_INDICATOR_X, DATA_SEND_INDICATOR_Y,
+                        DATA_SEND_INDICATOR_RADIUS, OLED_FILLED);
+    }
+	OLED_Update();
+}
+
 
 /**
  * @brief  处理报警条件。
@@ -512,7 +558,7 @@ void Initialize_Hardware(void) {
 //	BSP_PMS7003_Init();//扬尘传感器初始化
 //	BSP_XM7903_Init();//噪音传感器初始化
 	ESP8266_HardwareInit();
-//	Usart3_Init(9600);   
+	Usart3_Init(9600);   
 	
 }
 
@@ -709,7 +755,7 @@ int main(){
 //		decibels = g_xm7903_data.noise_db;
 		DMATaskHandler();//获取扬尘数据
         Handle_Alarm();// 处理报警条件
-		OLED_UI_MainLoop();	//显示刷新
+		Wrap_OLED_UI();
 		TaskHandler();//任务处理（包含数据发送、时间获取、警报处理等事件）
 		Handle_Thresholds();//保存与恢复默认阈值
 		Handle_Network_Data();//接收OneNet数据

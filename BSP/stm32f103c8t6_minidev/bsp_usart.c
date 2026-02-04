@@ -1,6 +1,6 @@
 /**
  ******************************************************************************
- * @file    bsp_usart_plus.c
+ * @file    bsp_usart.c
  * @author  Eureka
  * @brief   基于 STM32 标准外设库的多串口驱动（支持 USART1/2/3）
  *
@@ -9,7 +9,7 @@
  *          - 接收：RXNE 中断自动存入接收缓冲区
  *          - 支持 printf 重定向（通过 USART_DEBUG 宏指定）
  *
- * @usage   1. 在 SerialV2.h 中配置 SERIAL_USE_USARTx 和 TX/RX_BUF_SIZE
+ * @usage   1. 在 bsp_usart.h 中配置 SERIAL_USE_USARTx 和 TX/RX_BUF_SIZE
  *          2. 调用 UsartX_Init(baud) 初始化
  *          3. 使用 Serial_SendString(USARTx, "...") 等 API
  *          4. 使用 Serial_Available() / Serial_ReadByte() 读取数据

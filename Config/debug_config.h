@@ -25,7 +25,7 @@
 
 // ── OneNET 平台调试 ───────────────────────────────────────
 // #define ONENET_DEBUG_SEND    // 数据帧发送（含 Hex）
-// #define ONENET_DEBUG_CONN    // 连接状态（心跳、断连等）
+//// #define ONENET_DEBUG_CONN    // 连接状态（心跳、断连等）
 // #define ONENET_DEBUG_PARSE   // （预留）下行指令解析
 // #define ONENET_DEBUG_HB      // （预留）心跳细节
 
