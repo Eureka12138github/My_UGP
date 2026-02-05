@@ -30,6 +30,7 @@
 #include "project_secrets.h"
 
 #include "debug_config.h"
+#include "storage.h"
 
 #define ONENET_OK                0   // 协议处理成功（无论业务结果）
 #define ONENET_PARSE_ERR         1   // MQTT 或 JSON 解析失败
@@ -37,8 +38,7 @@
 #define ONENET_POST_FAILED       3   // 收到 post/reply 但失败
 #define ONENET_SET_HANDLED       4   // 成功处理了 set 指令（可选）
 
-#define IDX_DUST_LIMIT   1
-#define IDX_NOISE_LIMIT  2
+
 
 _Bool OneNET_RegisterDevice(void);
 

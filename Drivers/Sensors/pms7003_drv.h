@@ -21,6 +21,8 @@ typedef struct {
     bool is_valid;          		// 校验通过标志
 } PM_SensorData;
 PM_SensorData PMS_ParseDataPacket(const uint8_t *packet);
+void Dust_Data_Read(void);
+
 #endif 
 
 

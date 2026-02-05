@@ -133,11 +133,6 @@ extern uint8_t OLED_DisplayBuf[OLED_HEIGHT/8][OLED_WIDTH];
 #define WINDOW_RECTANGLE			(0)			//矩形窗口
 #define WINDOW_ROUNDRECTANGLE		(1)			//圆角矩形窗口
 
-/*********************关于窗口用途的宏（不可储存在数组 0 的位置，具体看Store.c）********************** */
-#define DUST_LIMIT_Store_IDX				(1)			//扬尘阈值存储索引
-#define NOISE_LIMIT_Store_IDX				(2)			//噪音阈值存储索引
-#define RESET_TIMERS_Store_IDX				(5)			//复位次数阈值存储索引
-//除了这里之外，见ErrorWarningLog.h里面也有关于存储位置的索引
 /*********************关于窗口数据类型的宏* ***************/
 #define WINDOW_DATA_STYLE_NONE	    (0)			//空
 #define WINDOW_DATA_STYLE_FLOAT		(1)			//浮点型数据

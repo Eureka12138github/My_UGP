@@ -575,7 +575,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
                 if (dust_limit_json && cJSON_IsNumber(dust_limit_json))
                 {
                     Dust_Limit = (int)dust_limit_json->valuedouble;
-                    Store_Data[IDX_DUST_LIMIT] = Dust_Limit;
+                    Store_Data[DUST_LIMIT_STORE_IDX] = Dust_Limit;
                     Store_Save();  // 保存到存储
                 }
 
@@ -584,7 +584,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
                 if (noise_limit_json && cJSON_IsNumber(noise_limit_json))
                 {
                     Noise_Limit = (int)noise_limit_json->valuedouble;
-                    Store_Data[IDX_NOISE_LIMIT] = Noise_Limit;
+                    Store_Data[NOISE_LIMIT_STORE_IDX] = Noise_Limit;
                     Store_Save();  // 保存到存储
                 }
 

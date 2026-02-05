@@ -79,14 +79,14 @@ void Display_Reset_Message(char* message,char* errortype) {
  * @retval None
  */
 void Check_Reset_Way(void) {
-	Reset_Count = Store_Data[RESET_TIMERS_Store_IDX];//现将原来已储存的复位次数取出
+	Reset_Count = Store_Data[RESET_TIMERS_STORE_IDX];//现将原来已储存的复位次数取出
     // 检查复位标志是否由看门狗产生
     if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) == SET) {
         // 显示图标
         OLED_ShowImageArea(0, 0, 64, 64, 0, 0, 64, 64, USC_LOGO_64);
         // 更新复位计数
         Reset_Count++;
-        Store_Data[RESET_TIMERS_Store_IDX] = Reset_Count;
+        Store_Data[RESET_TIMERS_STORE_IDX] = Reset_Count;
         Store_Save();
 		for(u8 i =0;i < ERROR_TIME_ARRAY_SIZE;i++){   
 			if(ErrorTime[i].errortype != 0){

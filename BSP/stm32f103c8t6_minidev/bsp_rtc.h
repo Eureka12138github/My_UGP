@@ -1,6 +1,8 @@
 #ifndef BSP_RTC_H
 #define BSP_RTC_H
 #include "stm32f10x.h"
+#include "bsp_usart.h"
+#include "debug_config.h"
 #include "stdbool.h"
 #include <time.h>
 typedef struct MYRTC {

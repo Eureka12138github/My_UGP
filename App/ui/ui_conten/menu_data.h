@@ -15,6 +15,10 @@ AboutOLED_UIMenuItems[],MoreMenuItems[],LongListMenuItems[],SmallAreaMenuItems[]
 extern MenuPage MainMenuPage,SettingsMenuPage,Monitor_Station_MenuPage,MoreDustDataPage,DataExplanationPage,
 AboutThisSystemPage,MoreMenuPage,ErrorMenuPage,ErrorTypeExplanationPage,WarningTypeExplanationPage,SmallAreaMenuPage,WarningMenuPage;
 extern PM_SensorData PM_Data;
+extern u16 Dust_Limit;
+extern u16 Noise_Limit;
+extern u16 decibels;
+extern u16 PM2_5_ENV;
 
 
 #ifdef __cplusplus
