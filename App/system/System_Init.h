@@ -2,7 +2,7 @@
 #define SYSTEM_INIT_H
 #include "stm32f10x.h"                  // Device header
 #include "OLED.h"
-#include "project_secrets.h"
+#include "system_config.h"
 #include "menu_data.h"
 #include "onenet_mqtt.h"
 #include "error_warning_log.h"

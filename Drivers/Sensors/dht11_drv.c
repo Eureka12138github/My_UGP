@@ -1,4 +1,3 @@
-#include "stm32f10x.h"// Device header
 #include "dht11_drv.h"
 #include "bsp_delay.h"
 //对于stm32来说，是输出

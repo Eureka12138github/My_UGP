@@ -27,7 +27,7 @@
 #include "stdbool.h"
 
 //OneNet配置文件
-#include "project_secrets.h"
+#include "system_config.h"
 
 #include "debug_config.h"
 #include "storage.h"

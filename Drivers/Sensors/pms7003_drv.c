@@ -1,4 +1,8 @@
 #include "pms7003_drv.h"
+
+#include <stddef.h>  // 用于NULL定义
+#include "bsp_pms7003.h"
+#include "sensors_data.h"
 #define PARSE_DATA(packet, index) \
     ((uint16_t)((packet[index] << 8) | packet[index + 1]))
 	
@@ -82,18 +86,4 @@ PM_SensorData PMS_ParseDataPacket(const uint8_t *packet)
     return data;
 }
 
-/**
- * @brief 粉尘（PM2.5）数据读取函数
- *
- * 从串口接收的数据包中解析出PM2.5环境浓度值，并保存到全局变量中。
- */
-void Dust_Data_Read(void) {
-    // 解析PMS7003传感器发送的串口数据包，获取PM数据
 
-        PM_SensorData data = PMS_ParseDataPacket(BSP_PMS7003_GetRxBuffer());
-        
-        if (data.is_valid) {
-//            PM_Data = data;           // 更新完整数据结构
-//            PM2_5_ENV = data.pm2_5_env; // 更新特定字段
-        }
-}

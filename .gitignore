@@ -64,8 +64,8 @@ __pycache__/
 # *.uvprojx
 
 # 敏感配置文件（不要提交！）
-project_secrets.c
-project_secrets.h
+system_config.c
+system_config.h
 
 # 注意：如果你希望团队共享项目配置，请保留 project.uvprojx 和 project.uvoptx
 # 否则可以在这里注释掉上面这两行

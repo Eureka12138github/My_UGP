@@ -1,36 +1,33 @@
 // XM7903 数据解析
 #include "xm7903_drv.h"
-
+#include "sensors_data.h"
 // 典型使用方式（由周期性任务调用，如每 1000ms）：
-// ┌─────────────────────────────────────────────────────────────┐
-// │ BSP_XM7903_SendQuery();      // 发送 MODBUS 查询帧          │
-// │ BSP_XM7903_StartReceive();   // 启动 7 字节 DMA 接收        │
-// │                                                             │
-// │ if (xm7903_rx_ready) {                                      │
-// │     xm7903_rx_ready = false;                                │
-// │     g_xm7903_data = XM7903_Parse(BSP_XM7903_GetRxBuffer()); │
-// │ } else {                                                    │
-// │     g_xm7903_data.valid = false;                            │
-// │     g_xm7903_data.noise_db = 0.0f;                          │
-// │ }                                                           │
-// └─────────────────────────────────────────────────────────────┘
+// ┌───────────────────────────────────────────────────────────────────────┐
+// │ BSP_XM7903_SendQuery();      // 发送 MODBUS 查询帧                    │
+// │ BSP_XM7903_StartReceive();   // 启动 7 字节 DMA 接收                  │
+// │                                                                       │
+// │ if (xm7903_rx_ready) {                                                │
+// │     xm7903_rx_ready = false;                                          │
+// │     XM7903_Data_t data = XM7903_Parse(BSP_XM7903_GetRxBuffer());       │
+// │     SensorsData_Update_Noise(&data);                                  │
+// │ } else {                                                              │
+// │     XM7903_Data_t invalid_data = {0};                                 │
+// │     invalid_data.valid = false;                                       │
+// │     SensorsData_Update_Noise(&invalid_data);                          │
+// │ }                                                                     │
+// └───────────────────────────────────────────────────────────────────────┘
 //
-// 上层通过 g_xm7903_data.valid 判断数据有效性，
-// 通过 g_xm7903_data.noise_db 获取噪声值（仅当 valid 为 true 时有效）。
+// 上层通过 SensorsData_Get()->noise.valid 判断数据有效性，
+// 通过 SensorsData_Get()->noise.noise_db 获取噪声值（仅当 valid 为 true 时有效）。
 
 // 注意：
 // - 传感器响应时间 << 任务周期（实测 <500ms），故无需“忙”标志；
 // - 每次任务强制重发新查询，上一轮未处理的响应会被覆盖或丢弃；
 
-
-
-// 启动阶段临时设 valid = true，防止系统初始化期间（如 WIFI/ONENET 连接）
-// 因尚未收到传感器数据而误触发 Noise_Data_Error 任务。
+// 启动阶段临时设 valid = true（在 sensors_data.c 的 g_sensor_data 初始化中），
+// 防止系统初始化期间（如 WIFI/ONENET 连接）因尚未收到传感器数据而误触发 Noise_Data_Error 任务。
 // 首次 XM7903_Task() 执行后，该字段将被真实通信结果覆盖。
-volatile XM7903_Data_t g_xm7903_data = {
-    .noise_db = 0.0f,
-    .valid = true
-};	
+
 
 /**
  * @brief 解析XM7903传感器返回的MODBUS数据帧
@@ -80,37 +77,3 @@ XM7903_Data_t XM7903_Parse(const uint8_t *frame)
     return result;
 }
 
-
-/**
- * @brief XM7903传感器数据采集任务
- * 
- * 执行一次完整的传感器数据读取流程：
- * 1. 发送MODBUS查询命令
- * 2. 启动DMA接收等待响应
- * 3. 检查接收状态并处理响应数据
- * 
- * 该函数应在合适的时间间隔内定期调用，以实现连续的数据采集
- * 
- * @note 该函数是非阻塞的，不会等待传感器响应完成
- *       响应数据通过DMA异步接收，下次调用时处理
- * 
- * @see BSP_XM7903_SendQuery
- * @see BSP_XM7903_StartReceive
- * @see BSP_XM7903_GetRxBuffer
- * @see XM7903_Parse
- */
-void XM7903_Task(void)
-{
-    BSP_XM7903_SendQuery();
-    BSP_XM7903_StartReceive();
-
-    if (xm7903_rx_ready) {
-        xm7903_rx_ready = false;
-        const uint8_t *buf = BSP_XM7903_GetRxBuffer();
-        g_xm7903_data = XM7903_Parse(buf); // 内部已处理 CRC 失败情况
-    } else {
-        // 未收到响应：明确标记为无效，并清零数值
-        g_xm7903_data.valid = false;
-//        g_xm7903_data.noise_db = 0.0f;
-    }
-}

@@ -337,7 +337,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party;.\Test;.\App\cloud;.\Middlewares\Utils\buffer;.\Middlewares\Utils\crypto;.\Middlewares\Utils\debug;.\Middlewares\Protocols\mqtt;.\Middlewares\Display;.\Middlewares\Display\Fonts;.\App\ui\ui_framework;.\App\ui\ui_conten;.\App\log;.\App\storage;.\Core\Src;.\Core\Inc;.\Drivers\Communication;.\Drivers\Sensors;.\Drivers\STM32F10x_StdPeriph_Driver;.\App\task;.\App\system</IncludePath>
+              <IncludePath>.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party;.\Test;.\App\cloud;.\Middlewares\Utils\buffer;.\Middlewares\Utils\crypto;.\Middlewares\Utils\debug;.\Middlewares\Protocols\mqtt;.\Middlewares\Display;.\Middlewares\Display\Fonts;.\App\ui\ui_framework;.\App\ui\ui_conten;.\App\log;.\App\storage;.\Core\Src;.\Core\Inc;.\Drivers\Communication;.\Drivers\Sensors;.\Drivers\STM32F10x_StdPeriph_Driver;.\App\task;.\App\system;.\App\sensors</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -996,6 +996,16 @@
               <FileType>5</FileType>
               <FilePath>.\App\system\System_Init.h</FilePath>
             </File>
+            <File>
+              <FileName>sensors_data.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\App\sensors\sensors_data.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_data.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\App\sensors\sensors_data.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1012,14 +1022,14 @@
               <FilePath>.\Config\bsp_config.h</FilePath>
             </File>
             <File>
-              <FileName>project_secrets.c</FileName>
+              <FileName>system_config.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Config\project_secrets.c</FilePath>
+              <FilePath>.\Config\system_config.c</FilePath>
             </File>
             <File>
-              <FileName>project_secrets.h</FileName>
+              <FileName>system_config.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Config\project_secrets.h</FilePath>
+              <FilePath>.\Config\system_config.h</FilePath>
             </File>
           </Files>
         </Group>

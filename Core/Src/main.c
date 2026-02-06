@@ -73,26 +73,23 @@ int main(){
 	ReadStoreErrorTime();
 	Check_Reset_Way();//检查复位方式，若是看门狗复位，复位次数加一并储存到FLASH中	    
 	Initialize_System();
-	//此分组配置在整个工程中仅需调用一次
-    //若有多个中断，可以把此代码放在main函数内，while循环之前
-	//若调用多次配置分组的代码，则后执行的配置会覆盖先执行的配置
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 全局唯一调用点
 	
 	OLED_UI_Init(&MainMenuPage);//UI初始化
 	MyRTC_Init();//系统时间设置
-//	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
+	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
 	PM_Data.pm2_5_env = 100;//静态警报测试
 	decibels = 67;	
 	
 	while(1){
-		decibels = g_xm7903_data.noise_db;
+//		decibels = g_xm7903_data.noise_db;
 		DMATaskHandler();//获取扬尘数据
         Handle_Alarm();// 处理报警条件
 		Wrap_OLED_UI();
 		TaskHandler();//任务处理（包含数据发送、时间获取、警报处理等事件）
 		Handle_Thresholds();//保存与恢复默认阈值
 		Handle_Network_Data();//接收OneNet数据
-//		IWDG_ReloadCounter();//喂狗
+		IWDG_ReloadCounter();//喂狗
 	}
 }
 

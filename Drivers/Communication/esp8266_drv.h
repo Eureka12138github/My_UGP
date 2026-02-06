@@ -25,7 +25,7 @@
 #include "bsp_usart.h"
 #include "bsp_config.h"
 #include "debug_config.h"
-#include "project_secrets.h"
+#include "system_config.h"
 #include "bsp_delay.h"
 #include "OLED.h"
 #include "bsp_rtc.h"
