@@ -9,10 +9,8 @@ typedef struct {
     bool valid;          // 是否有效（CRC 正确且格式合法）
 } XM7903_Data_t;
 
-extern volatile XM7903_Data_t g_xm7903_data;
 
 // 函数声明
 XM7903_Data_t XM7903_Parse(const uint8_t *frame);
-void XM7903_Task(void);
 
 #endif

@@ -1,28 +1,16 @@
 #include "menu_data.h"
-
+#include "sensors_data.h"
+#include "system_config.h"
+#include "storage.h"
 /*此文件用于存放菜单数据。实际上菜单数据可以存放在任何地方，存放于此处是为了规范与代码模块化*/
 
 // ColorMode 是一个在OLED_UI当中定义的bool类型变量，用于控制OLED显示的颜色模式， DARKMODE 为深色模式， LIGHTMOOD 为浅色模式。这里将其引出是为了创建单选框菜单项。
 extern bool ColorMode;
-extern bool Limit_Save;
-extern bool Clear_Data;
-extern bool Alarm_Off_Manual;
 // OLED_UI_Brightness 是一个在OLED_UI当中定义的int16_t类型变量，用于控制OLED显示的亮度。这里将其引出是为了创建调整亮度的滑动条窗口，范围0-255。
 extern u16 OLED_UI_Brightness;
-float testfloatnum = 0.5;
-u16 Dust_Limit = Default_Dust_Limit;
-u16 Noise_Limit = Default_Noise_Limit;
-u16 Reset_Count = 0;
-u16 decibels;
-u16 temp;
-u16 humi;
-u16 PM2_5_ENV;
-u8 Error1 = 1;
-u8 Error2 = 2;
-u8 Error3 = 3;
 
 
-PM_SensorData PM_Data = {0};
+
 #define SPEED 10
 
 MenuWindow LimitSaveWindow = {
@@ -87,8 +75,8 @@ void ShowClearDataWindow(void){
 MenuWindow Dust_Limit_Window = {
 	.General_Width = 80,								//窗口宽度
 	.General_Height = 28, 								//窗口高度
-	.General_WindowFor = DUST_LIMIT_Store_IDX,			//窗口用途
-	.Text_String = "PM2.5阈值(ug/m3)",					//窗口标题
+	.General_WindowFor = DUST_LIMIT_STORE_IDX,			//窗口用途
+	.Text_String = "PM2.5 阈值(ug/m3)",					//窗口标题
 	.Text_FontSize = OLED_UI_FONT_12,					//字高
 	.Text_FontSideDistance = 4,							//字体距离左侧的距离
 	.Text_FontTopDistance = 3,							//字体距离顶部的距离
@@ -107,7 +95,7 @@ MenuWindow Dust_Limit_Window = {
 MenuWindow Noise_Limit_Window = {
 	.General_Width = 80,								//窗口宽度
 	.General_Height = 28, 								//窗口高度
-	.General_WindowFor = NOISE_LIMIT_Store_IDX,				//窗口用途
+	.General_WindowFor = NOISE_LIMIT_STORE_IDX,				//窗口用途
 	.Text_String = "噪音阈值(dBA)",						//窗口标题
 	.Text_FontSize = OLED_UI_FONT_12,					//字高
 	.Text_FontSideDistance = 4,							//字体距离左侧的距离
@@ -115,7 +103,7 @@ MenuWindow Noise_Limit_Window = {
 	.General_WindowType = WINDOW_ROUNDRECTANGLE, 		//窗口类型
 	.General_ContinueTime = 4.0,						//窗口持续时间
 
-	.Prob_Data_u16 = &Noise_Limit,						//显示的变量地址
+	.Prob_Data_Float = &Noise_Limit,						//显示的变量地址
 	.Prob_DataStep = 1,									//步长
 	.Prob_MinData = 0,									//最小值
 	.Prob_MaxData = 100, 								//最大值
@@ -235,41 +223,41 @@ MenuItem Monitor_Station_MenuItems[] = {
 	.General_callback = NULL,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &PM_Data.pm2_5_env
+	.u16_Value = &g_sensor_data.pm.pm2_5_env
 	},
 	
-	{.General_item_text = "噪音:%ddBA",
+	{.General_item_text = "噪音:%.1fdBA",
 	.General_callback = NULL,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &decibels	
+	.float_Value = &g_sensor_data.noise.noise_db,	
 	},
 	
 	{.General_item_text = "PM2.5阈值:%dug/m3",
 	.General_callback = ShowDust_Limit_Window,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &Dust_Limit,	
+	.u16_Value = &Dust_Limit,	
 	},
 	
-	{.General_item_text = "噪音阈值:%ddBA",
+	{.General_item_text = "噪音阈值:%.1fdBA",
 	.General_callback = ShowNoise_Limit_Window,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &Noise_Limit,	
+	.float_Value = &Noise_Limit,	
 	},
 	
 	{.General_item_text = "温度:%d`C",
 	.General_callback = NULL,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &temp,	
+	.u16_Value = &g_sensor_data.temp,	
 	},
 	{.General_item_text = "湿度:%d%%RH",
 	.General_callback = NULL,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &humi,	
+	.u16_Value = &g_sensor_data.humi,	
 	},
 	
 	{.General_item_text = "更多扬尘数据",
@@ -294,7 +282,7 @@ MenuItem Monitor_Station_MenuItems[] = {
 	.General_callback = NULL,
 	.General_SubMenuPage = NULL,
 	.List_BoolRadioBox = NULL,
-	.General_Value = &Reset_Count,	
+	.u16_Value = &Reset_Count,	
 	},	
 	
 	{.General_item_text = "[返回]",
@@ -359,21 +347,21 @@ MenuItem ErrorMenuItems[] = {
 	{
 	.General_item_text = "错误类型:%d(%d年%d月%d日%d:%d:%d)",
 	.ShowErrorMeg = &ErrorTime[0].errorshowflag,
-	.General_Value1 = &ErrorTime[0].errortype,
+	.u8_Value = &ErrorTime[0].errortype,
 	.TimeValue = &ErrorTime[0].errortime
 	},
 	
 	{
 	.General_item_text = "错误类型:%d(%d年%d月%d日%d:%d:%d)",
 	.ShowErrorMeg = &ErrorTime[1].errorshowflag,
-	.General_Value1 = &ErrorTime[1].errortype,
+	.u8_Value = &ErrorTime[1].errortype,
 	.TimeValue = &ErrorTime[1].errortime
 	},
 	
 	{
 	.General_item_text = "错误类型:%d(%d年%d月%d日%d:%d:%d)",
 	.ShowErrorMeg = &ErrorTime[2].errorshowflag,
-	.General_Value1 = &ErrorTime[2].errortype,
+	.u8_Value = &ErrorTime[2].errortype,
 	.TimeValue = &ErrorTime[2].errortime
 	},
 	
@@ -387,21 +375,21 @@ MenuItem WarningMenuItems[] = {
 	{
 	.General_item_text = "警报类型:%d(%d年%d月%d日%d:%d:%d)",
 	.ShowErrorMeg = &WarningTime[0].warningshowflag,
-	.General_Value1 = &WarningTime[0].warningtype,
+	.u8_Value = &WarningTime[0].warningtype,
 	.TimeValue = &WarningTime[0].warningtime
 	},
 	
 	{
 	.General_item_text = "警报类型:%d(%d年%d月%d日%d:%d:%d)",
 	.ShowErrorMeg = &WarningTime[1].warningshowflag,
-	.General_Value1 = &WarningTime[1].warningtype,
+	.u8_Value = &WarningTime[1].warningtype,
 	.TimeValue = &WarningTime[1].warningtime
 	},
 	
 	{
 	.General_item_text = "警报类型:%d(%d年%d月%d日%d:%d:%d)",
 	.ShowErrorMeg = &WarningTime[2].warningshowflag,
-	.General_Value1 = &WarningTime[2].warningtype,
+	.u8_Value = &WarningTime[2].warningtype,
 	.TimeValue = &WarningTime[2].warningtime
 	},
 	{.General_item_text = "类型说明",.General_callback = NULL,.General_SubMenuPage = &WarningTypeExplanationPage},	
@@ -410,18 +398,18 @@ MenuItem WarningMenuItems[] = {
 };
 
 MenuItem MoreDustDataItems[] = {
-	{.General_item_text = "PM1.0_Cf1:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.pm1_0_cf1},
-	{.General_item_text = "PM2.5_Cf1:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.pm2_5_cf1},
-	{.General_item_text = "PM10_Cf1:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.pm10_cf1},
-	{.General_item_text = "PM1.0_Env:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.pm1_0_env},
-	{.General_item_text = "PM2.5_Env:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.pm2_5_env},
-	{.General_item_text = "PM10_Env:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.pm10_env},
-	{.General_item_text = "Particles0.3:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.particles0_3},
-	{.General_item_text = "Particles0.5:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.particles0_5},
-	{.General_item_text = "Particles1.0:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.particles1_0},
-	{.General_item_text = "Particles2.5:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.particles2_5},
-	{.General_item_text = "Particles5.0:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.particles5_0},
-	{.General_item_text = "Particles10:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.General_Value = &PM_Data.particles10},
+	{.General_item_text = "PM1.0_Cf1:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.pm1_0_cf1},
+	{.General_item_text = "PM2.5_Cf1:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.pm2_5_cf1},
+	{.General_item_text = "PM10_Cf1:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.pm10_cf1},
+	{.General_item_text = "PM1.0_Env:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.pm1_0_env},
+	{.General_item_text = "PM2.5_Env:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.pm2_5_env},
+	{.General_item_text = "PM10_Env:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.pm10_env},
+	{.General_item_text = "Particles0.3:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.particles0_3},
+	{.General_item_text = "Particles0.5:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.particles0_5},
+	{.General_item_text = "Particles1.0:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.particles1_0},
+	{.General_item_text = "Particles2.5:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.particles2_5},
+	{.General_item_text = "Particles5.0:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.particles5_0},
+	{.General_item_text = "Particles10:%d",.General_callback = NULL,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL,.u16_Value = &g_sensor_data.pm.particles10},
 	{.General_item_text = "数据说明",.General_callback = NULL,.General_SubMenuPage = &DataExplanationPage,.List_BoolRadioBox = NULL},		
 	{.General_item_text = "[返回]",.General_callback = OLED_UI_Back,.General_SubMenuPage = NULL,.List_BoolRadioBox = NULL},
 	{.General_item_text = NULL},/*最后一项的General_item_text置为NULL，表示该项为分割线*/

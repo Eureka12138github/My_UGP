@@ -1160,7 +1160,7 @@ uint8 MQTT_PacketPublish(uint16 pkt_id, const int8 *topic,
     return 0;
 }
 
-
+#include "debug_config.h"
 //==========================================================
 //	函数名称：	MQTT_UnPacketPublish
 //
@@ -1176,94 +1176,175 @@ uint8 MQTT_PacketPublish(uint16 pkt_id, const int8 *topic,
 //==========================================================
 uint8 MQTT_UnPacketPublish(uint8 *rev_data, int8 **topic, uint16 *topic_len, int8 **payload, uint16 *payload_len, uint8 *qos, uint16 *pkt_id)
 {
-	
-	const int8 flags = rev_data[0] & 0x0F;
-	uint8 *msgPtr;
-	uint32 remain_len = 0;
+    if (rev_data == NULL) {
+        MQTT_KIT_DEBUG("❌ rev_data is NULL");
+        return 255;
+    }
 
-	const int8 dup = flags & 0x08;
+    // 先读取 flags 和 QoS（注意：此时 *qos 还未设置）
+    const uint8 first_byte = rev_data[0];
+    const uint8 flags = first_byte & 0x0F;
+    const uint8 dup = (flags & 0x08) ? 1 : 0;
+    const uint8 qos_val = (flags & 0x06) >> 1;
+    *qos = qos_val;
 
-	*qos = (flags & 0x06) >> 1;
-	
-	msgPtr = rev_data + MQTT_ReadLength(rev_data + 1, 4, &remain_len) + 1;
-	
-	if(remain_len < 2 || flags & 0x01)							//retain
-		return 255;
-	
-	*topic_len = (uint16)msgPtr[0] << 8 | msgPtr[1];
-	if(remain_len < *topic_len + 2)
-		return 255;
-	
-	if(strstr((int8 *)msgPtr + 2, CMD_TOPIC_PREFIX) != NULL)	//如果是命令下发
-		return MQTT_PKT_CMD;
-	
-	switch(*qos)
-	{
-		case MQTT_QOS_LEVEL0:									// qos0 have no packet identifier
-			
-			if(0 != dup)
-				return 255;
+    MQTT_KIT_DEBUG("MQTT PUBLISH: first_byte=0x%02X, flags=0x%02X, dup=%u, qos=%u", 
+                     first_byte, flags, dup, qos_val);
 
-			*topic = MQTT_MallocBuffer(*topic_len + 1);			//为topic分配内存
-			if(*topic == NULL)
-				return 255;
-			
-			memset(*topic, 0, *topic_len + 1);
-			memcpy(*topic, (int8 *)msgPtr + 2, *topic_len);		//复制数据
-			
-			*payload_len = remain_len - 2 - *topic_len;			//为payload分配内存
-			*payload = MQTT_MallocBuffer(*payload_len + 1);
-			if(*payload == NULL)								//如果失败
-			{
-				MQTT_FreeBuffer(*topic);						//则需要把topic的内存释放掉
-				return 255;
-			}
-			
-			memset(*payload, 0, *payload_len + 1);
-			memcpy(*payload, (int8 *)msgPtr + 2 + *topic_len, *payload_len);
-			
-		break;
+    // 解析 Remaining Length
+    uint32 remain_len = 0;
+    int32 len_bytes = MQTT_ReadLength(rev_data + 1, 4, &remain_len);
+    if (len_bytes <= 0) {
+        MQTT_KIT_DEBUG("❌ MQTT_ReadLength failed, ret=%ld", len_bytes);
+        return 255;
+    }
+    uint8 *msgPtr = rev_data + 1 + len_bytes; // Variable Header 起始位置
 
-		case MQTT_QOS_LEVEL1:
-		case MQTT_QOS_LEVEL2:
-			
-			if(*topic_len + 2 > remain_len)
-				return 255;
-			
-			*pkt_id = (uint16)msgPtr[*topic_len + 2] << 8 | msgPtr[*topic_len + 3];
-			if(pkt_id == 0)
-				return 255;
-			
-			*topic = MQTT_MallocBuffer(*topic_len + 1);			//为topic分配内存
-			if(*topic == NULL)
-				return 255;
-			
-			memset(*topic, 0, *topic_len + 1);
-			memcpy(*topic, (int8 *)msgPtr + 2, *topic_len);		//复制数据
-			
-			*payload_len = remain_len - 4 - *topic_len;
-			*payload = MQTT_MallocBuffer(*payload_len + 1);		//为payload分配内存
-			if(*payload == NULL)								//如果失败
-			{
-				MQTT_FreeBuffer(*topic);						//则需要把topic的内存释放掉
-				return 255;
-			}
-			
-			memset(*payload, 0, *payload_len + 1);
-			memcpy(*payload, (int8 *)msgPtr + 4 + *topic_len, *payload_len);
-			
-		break;
+    MQTT_KIT_DEBUG("MQTT: len_field_bytes=%ld, remain_len=%lu, msgPtr_offset=%ld", 
+                     len_bytes, remain_len, (long)(msgPtr - rev_data));
 
-		default:
-			return 255;
-	}
-	
-	if(strchr((int8 *)topic, '+') || strchr((int8 *)topic, '#'))
-		return 255;
+    // 基本合法性检查
+    if (remain_len < 2 || (flags & 0x01)) { // retain bit set or too short
+        MQTT_KIT_DEBUG("❌ Invalid: retain=%u or remain_len=%lu < 2", 
+                         (flags & 0x01) ? 1 : 0, remain_len);
+        return 255;
+    }
 
-	return 0;
+    // 读取 topic length
+    if (msgPtr + 2 > rev_data + 1 + len_bytes + remain_len) {
+        MQTT_KIT_DEBUG("❌ Buffer overflow when reading topic_len");
+        return 255;
+    }
+    *topic_len = ((uint16)msgPtr[0] << 8) | msgPtr[1];
+    MQTT_KIT_DEBUG("Parsed topic_len=%u", *topic_len);
 
+    // 检查 topic 长度是否合法
+    if (*topic_len == 0 || remain_len < (uint32_t)(*topic_len + 2)) {
+        MQTT_KIT_DEBUG("❌ Invalid topic_len: %u, remain_len=%lu", *topic_len, remain_len);
+        return 255;
+    }
+
+    // 检查是否是命令下发（提前判断，避免无谓内存分配）
+    const char* topic_str = (const char*)(msgPtr + 2);
+    if (strstr(topic_str, CMD_TOPIC_PREFIX) != NULL) {
+        MQTT_KIT_DEBUG("✅ Matched CMD_TOPIC_PREFIX: %s", CMD_TOPIC_PREFIX);
+        // 注意：这里不分配内存，由上层决定是否处理
+        return MQTT_PKT_CMD;
+    }
+
+    // === 根据 QoS 分支处理 ===
+    switch(qos_val)
+    {
+        case MQTT_QOS_LEVEL0:
+            if (dup != 0) {
+                MQTT_KIT_DEBUG("❌ QoS0 with DUP=1 is invalid");
+                return 255;
+            }
+
+            MQTT_KIT_DEBUG("→ Entering QoS0 branch");
+
+            // 分配 topic
+            MQTT_KIT_DEBUG("Allocating topic, len=%u (+1 for null)", *topic_len);
+            *topic = MQTT_MallocBuffer(*topic_len + 1);
+            if (*topic == NULL) {
+                MQTT_KIT_DEBUG("❌ malloc(topic) FAILED! requested=%u", *topic_len + 1);
+                return 255;
+            }
+            memset(*topic, 0, *topic_len + 1);
+            memcpy(*topic, msgPtr + 2, *topic_len);
+            MQTT_KIT_DEBUG("Topic copied: '%.*s'", *topic_len, *topic);
+
+            // 计算 payload_len
+            *payload_len = (uint16)(remain_len - 2 - *topic_len);
+            MQTT_KIT_DEBUG("Calculated payload_len=%u", *payload_len);
+
+            // 分配 payload
+            if (*payload_len == 0) {
+                MQTT_KIT_DEBUG("⚠️ Payload is empty!");
+                *payload = NULL;
+                // 注意：有些实现要求 payload 至少 1 字节，这里按你的逻辑走
+            } else {
+                MQTT_KIT_DEBUG("Allocating payload, len=%u (+1 for null)", *payload_len);
+                *payload = MQTT_MallocBuffer(*payload_len + 1);
+                if (*payload == NULL) {
+                    MQTT_KIT_DEBUG("❌ malloc(payload) FAILED! requested=%u", *payload_len + 1);
+                    MQTT_FreeBuffer(*topic);
+                    return 255;
+                }
+                memset(*payload, 0, *payload_len + 1);
+                memcpy(*payload, msgPtr + 2 + *topic_len, *payload_len);
+                MQTT_KIT_DEBUG("Payload copied (first 32 bytes): '%.*s'", 
+                                 (*payload_len > 32) ? 32 : *payload_len, *payload);
+            }
+
+            break;
+
+        case MQTT_QOS_LEVEL1:
+        case MQTT_QOS_LEVEL2:
+            MQTT_KIT_DEBUG("→ Entering QoS1/2 branch");
+
+            if (*topic_len + 4 > remain_len) {
+                MQTT_KIT_DEBUG("❌ Not enough data for pkt_id: topic_len=%u, remain_len=%lu", 
+                                 *topic_len, remain_len);
+                return 255;
+            }
+
+            *pkt_id = ((uint16)msgPtr[*topic_len + 2] << 8) | msgPtr[*topic_len + 3];
+            if (*pkt_id == 0) {
+                MQTT_KIT_DEBUG("❌ Invalid pkt_id=0");
+                return 255;
+            }
+            MQTT_KIT_DEBUG("Parsed pkt_id=%u", *pkt_id);
+
+            // 分配 topic
+            *topic = MQTT_MallocBuffer(*topic_len + 1);
+            if (*topic == NULL) {
+                MQTT_KIT_DEBUG("❌ malloc(topic) FAILED in QoS1/2");
+                return 255;
+            }
+            memset(*topic, 0, *topic_len + 1);
+            memcpy(*topic, msgPtr + 2, *topic_len);
+            MQTT_KIT_DEBUG("Topic copied: '%.*s'", *topic_len, *topic);
+
+            *payload_len = (uint16)(remain_len - 4 - *topic_len);
+            MQTT_KIT_DEBUG("Calculated payload_len=%u", *payload_len);
+
+            if (*payload_len == 0) {
+                MQTT_KIT_DEBUG("⚠️ Payload is empty in QoS1/2!");
+                *payload = NULL;
+            } else {
+                *payload = MQTT_MallocBuffer(*payload_len + 1);
+                if (*payload == NULL) {
+                    MQTT_KIT_DEBUG("❌ malloc(payload) FAILED in QoS1/2");
+                    MQTT_FreeBuffer(*topic);
+                    return 255;
+                }
+                memset(*payload, 0, *payload_len + 1);
+                memcpy(*payload, msgPtr + 4 + *topic_len, *payload_len);
+                MQTT_KIT_DEBUG("Payload copied (first 32 bytes): '%.*s'", 
+                                 (*payload_len > 32) ? 32 : *payload_len, *payload);
+            }
+
+            break;
+
+        default:
+            MQTT_KIT_DEBUG("❌ Unsupported QoS level: %u", qos_val);
+            return 255;
+    }
+
+    // 检查通配符（安全）
+    if (strchr((char*)*topic, '+') || strchr((char*)*topic, '#')) {
+        MQTT_KIT_DEBUG("❌ Topic contains wildcard: %s", *topic);
+        MQTT_FreeBuffer(*topic);
+        if (*payload) MQTT_FreeBuffer(*payload);
+        return 255;
+    }
+
+    MQTT_KIT_DEBUG("✅ MQTT_UnPacketPublish success: topic='%.*s', payload_len=%u", 
+                     *topic_len, *topic, *payload_len);
+    return 0;
 }
+
 
 //==========================================================
 //	函数名称：	MQTT_PacketPublishAck

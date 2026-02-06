@@ -1,5 +1,5 @@
-// project_secrets_example.c
-#include "project_secrets_example.h"
+// system_config_example.c
+#include "system_config_example.h"
 
 // ⚠️ 注意：此为示例文件，请复制为 project_secrets.c 并填入你的真实信息
 // ⚠️ 确保 project_secrets.c 已加入 .gitignore，切勿提交！
@@ -8,6 +8,13 @@
 const char* ONENET_PROID        = "YOUR_ONENET_PRODUCT_ID_HERE";
 const char* ONENET_ACCESS_KEY   = "YOUR_ONENET_ACCESS_KEY_HERE";
 const char* ONENET_DEVICE_NAME  = "YOUR_DEVICE_NAME_HERE";
+const char* ESP8266_ONENET_INFO = "AT+CIPSTART=\"TCP\",\"mqtts.heclouds.com\",1883\r\n";
+
+
+//ESP8266
+const char* ESP8266_SNTP_CONFIG = "AT+CIPSNTPCFG=1,8,\"ntp1.aliyun.com\"\r\n";
+//const char* ESP8266_SNTP_CONFIG = "AT+CIPSNTPCFG=1,8,\"cn.ntp.org.cn\",\"ntp.sjtu.edu.cn\"\r\n";
+	
 
 // Wi-Fi 配置（替换成你的网络）
 const char* WIFI_CONNECT_CMD = "AT+CWJAP=\"YOUR_WIFI_SSID_HERE\",\"YOUR_WIFI_PASSWORD_HERE\"\r\n";

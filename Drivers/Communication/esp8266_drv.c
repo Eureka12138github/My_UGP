@@ -150,6 +150,116 @@ _Bool ESP8266_SendCmd(const char *cmd, const char *res)
 }
 
 /**
+ * @brief 从 ESP8266 获取 SNTP 时间（仿旧版逻辑，适配环形缓冲区）
+ *
+ * 发送 "AT+CIPSNTPTIME?"，等待响应。
+ * 若响应中 **不包含 "1970"** 且 **包含 "+CIPSNTPTIME:"**，则解析时间。
+ * 此逻辑与旧版 ESP8266_SNTP_Time 一致。
+ *
+ * @param[out] TimeStructure RTC 结构体指针
+ * @param[in]  timeout_ms    总超时时间（毫秒）
+ * @retval 0 成功
+ * @retval 1 超时或失败
+ */
+u8 ESP8266_GetSNTPTime(MYRTC* TimeStructure, uint16_t timeout_ms)
+{
+    if (!TimeStructure) {
+        ESP8266_LOG_FAIL("TimeStructure is NULL");
+        return 1;
+    }
+
+    static const char* wday_map[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+    static const char* month_map[] = {"Jan","Feb","Mar","Apr","May","Jun",
+                                      "Jul","Aug","Sep","Oct","Nov","Dec"};
+
+    cbuf_handle_t rx_cbuf = BSP_USARTX_GetRxCbuf(BSP_ESP8266_USARTx);
+    if (!rx_cbuf) {
+        ESP8266_LOG_FAIL("RX buffer not initialized!");
+        return 1;
+    }
+
+    // 清空旧数据
+    circular_buf_reset(rx_cbuf);
+    Serial_SendString(BSP_ESP8266_USARTx, "AT+CIPSNTPTIME?\r\n");
+
+    uint32_t start = SysTick_Get();
+    char line[128] = {0};
+    size_t line_pos = 0;
+
+    while ((SysTick_Get() - start) < timeout_ms) {
+        uint8_t ch;
+        // 尝试从环形缓冲区取一个字节
+        if (circular_buf_get(rx_cbuf, &ch) == 0) {
+            // 成功取到一个字节
+            if (ch == '\n' || ch == '\r') {
+                // 遇到行结束符，处理当前行
+                if (line_pos > 0) {
+                    line[line_pos] = '\0';
+
+                    ESP8266_LOG_IPD("Line: %s", line);
+
+                    // 检查是否是有效的 +CIPSNTPTIME 响应且年份 > 1970
+                    if (strstr(line, "+CIPSNTPTIME:") != NULL) {
+                        char timeStr[64] = {0};
+                        uint16_t year = 0;
+                        uint8_t day = 0, hour = 0, minute = 0, second = 0;
+
+                        int parsed = sscanf(line,
+                            "+CIPSNTPTIME:%3s %3s %hhu %hhu:%hhu:%hhu %hu",
+                            timeStr, timeStr + 4,
+                            &day, &hour, &minute, &second, &year);
+
+                        if (parsed >= 5 && year > 1970) {
+                            TimeStructure->Year = year;
+                            TimeStructure->Day = day;
+                            TimeStructure->Hour = hour;
+                            TimeStructure->Minute = minute;
+                            TimeStructure->Second = second;
+
+                            // 解析星期
+                            TimeStructure->wday = 0;
+                            for (int i = 0; i < 7; i++) {
+                                if (strncmp(timeStr, wday_map[i], 3) == 0) {
+                                    TimeStructure->wday = i;
+                                    break;
+                                }
+                            }
+
+                            // 解析月份
+                            TimeStructure->Month = 1;
+                            for (int i = 0; i < 12; i++) {
+                                if (strncmp(timeStr + 4, month_map[i], 3) == 0) {
+                                    TimeStructure->Month = i + 1;
+                                    break;
+                                }
+                            }
+
+                            return 0; // 成功
+                        }
+                        // 如果是 1970，继续等待下一行
+                    }
+                    // 忽略其他行（如 "OK", 回显等）
+                }
+                line_pos = 0; // 重置行缓冲区
+            } else {
+                // 普通字符，存入行缓冲区
+                if (line_pos < sizeof(line) - 1) {
+                    line[line_pos++] = (char)ch;
+                }
+                // 如果行太长，自动截断（安全）
+            }
+        } else {
+            // 缓冲区为空，稍等
+            Delay_ms(5);
+        }
+    }
+
+    ESP8266_LOG_FAIL("Get SNTP time timeout");
+    return 1;
+}
+
+
+/**
  * @brief 更新 ESP8266 初始化状态到 OLED 指定区域
  *
  * 清除固定区域 (66,32) 宽 50 高 16 像素，并显示状态字符串。
@@ -164,24 +274,29 @@ _Bool ESP8266_SendCmd(const char *cmd, const char *res)
 
 /**
  ******************************************************************************
- * @brief  初始化 ESP8266 模块（AT 指令握手 + 基础配置）
+ * @brief  初始化 ESP8266 模块（AT 指令握手 + 基础配置 + SNTP 时间同步）
  *
  * @details 执行以下初始化步骤：
  *          1. 发送 "AT" 测试通信是否正常
  *          2. 设置工作模式为 STA（AT+CWMODE=1）
  *          3. 启用 DHCP 自动获取 IP（AT+CWDHCP=1,1）
  *          4. 连接预设的 WiFi 网络（通过 WIFI_CONNECT_CMD 宏定义）
+ *          5. 配置 SNTP 服务器（需发送两次以激活）
+ *          6. 获取网络时间并填充全局 Time 结构体
  *
  * @retval 0: 成功完成全部初始化
  * @retval 1: AT 指令无响应（通信失败）
  * @retval 2: STA 模式设置失败
  * @retval 3: DHCP 启用失败
  * @retval 4: WiFi 连接失败（未收到 "GOT IP"）
+ * @retval 5: SNTP 配置失败（第二次命令未返回 OK）
+ * @retval 6: SNTP 时间获取失败（多次重试后仍返回 1970 或超时）
  *
  * @note   - 本函数依赖以下前提已满足：
  *           • 已调用 Delay_Init()（SysTick 正常工作）
  *           • 已调用 ESP8266_HardwareInit()（串口与复位引脚已初始化）
- *           • WIFI_CONNECT_CMD 宏已在头文件中正确定义（如 "AT+CWJAP=\"SSID\",\"PWD\"\r\n"）
+ *           • WIFI_CONNECT_CMD 和 ESP8266_SNTP_CONFIG 宏已在头文件中正确定义
+ *           • 全局变量 `MYRTC Time` 可被写入（用于存储获取的时间）
  *
  * @warning 调试日志通过条件编译控制，默认关闭。若需查看初始化流程，请按以下步骤操作：
  *          1. 打开头文件 `debug_config.h`
@@ -190,19 +305,19 @@ _Bool ESP8266_SendCmd(const char *cmd, const char *res)
  *          3. 确保 `USART_DEBUG` 已被修改为调试串口用于输出
  *          4. OLED 状态提示始终生效，用于无串口场景的用户反馈
  *
- *          ⚠️ 注意：调试日志仅用于开发阶段！发布固件前请务必关闭所有 ESP8266_DEBUG_INIT* 宏，
+ *          ⚠️ 注意：调试日志仅用于开发阶段！发布固件前请务必关闭所有 ESP8266_DEBUG_* 宏，
  *                   以避免占用 Flash 空间、泄露信息或影响性能。
  ******************************************************************************
  */
 u8 ESP8266_Init(void)
 {
-    const u8 maxRetries = 3;
+    const u8 maxRetries = 5;
     u8 retryCount;
 
     ESP8266_LOG_INIT("=== ESP8266 初始化开始 ===");
 
     /* 清除 OLED 状态区（准备显示新状态） */
-    ESP8266_SetStatus(""); // 清空（传空字符串或后续覆盖均可）
+    ESP8266_SetStatus(""); // 清空状态显示
 
     /* 1. 测试 AT */
     ESP8266_LOG_INIT("1. 测试 AT 指令...");
@@ -264,8 +379,38 @@ u8 ESP8266_Init(void)
         return 4;
     }
 
-    /* 全部成功：可选择显示 OK，也可保持空白（推荐不显示，避免遮挡其他信息） */
-    // ESP8266_SetStatus("OK"); // 可选
+    /* 5. 配置 SNTP（必须发送两次以确保激活） */
+    ESP8266_LOG_INIT("🔧 配置 SNTP 服务器...");
+
+    // 第一次：设置配置（部分固件不返回 OK，可容忍）
+    if (ESP8266_SendCmd(ESP8266_SNTP_CONFIG, "OK") != 0) {
+        ESP8266_LOG_INIT("⚠️ 第一次 SNTP 配置未收到 OK（可能正常）");
+    }
+    Delay_ms(100); // 防指令粘连
+
+    // 第二次：激活同步（必须成功）
+    if (ESP8266_SendCmd(ESP8266_SNTP_CONFIG, "OK") != 0) {
+        ESP8266_LOG_INIT("❌ 第二次 SNTP 配置失败");
+        ESP8266_SetStatus("SNTP ERR");
+        return 5;
+    }
+    ESP8266_LOG_INIT("✅ SNTP 已激活");
+
+    /* 6. 获取网络时间（带重试） */
+    ESP8266_LOG_INIT("⏳ 尝试获取网络时间...");
+    u8 time_retry;
+    for (time_retry = 0; time_retry < maxRetries; time_retry++) {
+        if (ESP8266_GetSNTPTime(&Time, 5000) == 0) {
+            ESP8266_LOG_INIT("✅ 时间获取成功");
+            break;
+        }
+        Delay_ms(500);
+    }
+    if (time_retry >= maxRetries) {
+        ESP8266_LOG_INIT("❌ 时间获取失败");
+        ESP8266_SetStatus("TIME ERR");
+        return 6;
+    }
 
     ESP8266_LOG_INIT("=== ESP8266 初始化完成！===");
     return 0;

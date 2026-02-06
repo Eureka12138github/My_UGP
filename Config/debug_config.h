@@ -35,6 +35,12 @@
 // #define ESP8266_DEBUG_INIT   // 打印初始化各阶段日志
 // #define ESP8266_DEBUG_IPD    // 打印 +IPD 接收内容（仅调试通信问题时启用！）
 
+// ── RTC 实时时钟调试 ───────────────────────────────────────
+// #define RTC_DEBUG_INIT   // 启用 RTC 初始化日志
+
+// ── MQTT 协议栈调试 ───────────────────────────────────────
+// #define MQTT_DEBUG   // 启用 RTC 初始化日志
+
 /* ============================================================================ */
 /*                     【系统配置】调试串口定义                                  */
 /* ============================================================================ */
@@ -111,6 +117,24 @@
 #else
   #define ESP8266_LOG_IPD(fmt, ...) ((void)0)
 #endif
+  
+  
+// ── RTC 模块 ───────────────────────────────────────────────
+#ifdef RTC_DEBUG_INIT
+  #define RTC_LOG_INIT(fmt, ...) \
+      Serial_Printf(USART_DEBUG, "[RTC] " fmt "\r\n", ##__VA_ARGS__)
+#else
+  #define RTC_LOG_INIT(fmt, ...) ((void)0)
+#endif  
+  
+  
+// ── MQTT KIT ───────────────────────────────────────────────
+#ifdef MQTT_DEBUG
+  #define MQTT_KIT_DEBUG(fmt, ...) \
+      Serial_Printf(USART_DEBUG, "[MQTT KIT][DEBUG] " fmt "\r\n", ##__VA_ARGS__)
+#else
+  #define MQTT_KIT_DEBUG(fmt, ...) ((void)0)
+#endif   
 
 
 /* ============================================================================ */

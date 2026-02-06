@@ -1,0 +1,46 @@
+MyProject/
+├── Core/                     ← 用户核心代码
+│   ├── Src/
+│   │   ├── main.c
+│   │   ├── stm32f10x_it.c
+│   │   └── system_stm32f10x.c
+│   └── Inc/
+│       ├── main.h
+│       └── stm32f10x_it.h
+│
+├── Drivers/                  
+├── BSP/                      ← 板级支持包
+│   └── stm32f103c8t6_minidev/
+│       ├── bsp_led.c/h
+│       ├── bsp_key.c/h
+│       ├── bsp_oled.c/h
+│       └── bSPATH_config.h
+│
+├── Middlewares/              ← 第三方库
+│   └── Third_Party/
+│       ├── cJSON/
+│       └── base64/
+│
+├── App/                      ← 应用逻辑
+│   ├── sensors/
+│   │   ├── sensor_manager.c/h
+│   │   ├── dht11_wrapper.c/h
+│   │   └── pms7003_wrapper.c/h
+│   ├── cloud/
+│   │   ├── onenet_mqtt.c/h
+│   │   └── esp8266_at.c/h
+│   └── ui/
+│       └── oled_menu.c/h
+│
+├── Config/                   ← 配置文件
+│   ├── app_config.h
+│   ├── secrets_template.h
+│   └── secrets.h             ← 不提交！
+│
+├── Projects/                 ← Keil 工程文件
+│   └── project.uvprojx
+│
+├── .gitignore
+├── README.md
+└── LICENSE
+

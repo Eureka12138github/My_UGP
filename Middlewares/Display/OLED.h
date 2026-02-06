@@ -51,7 +51,7 @@ void OLED_ShowFloatNum(int16_t X, int16_t Y, double Number, uint8_t IntLength, u
 //显示中英文字符串
 void OLED_ShowString(int16_t X, int16_t Y, const char *String, uint8_t FontSize);
 void OLED_ShowMixString(int16_t X, int16_t Y, char *String, uint8_t ChineseFontSize, uint8_t ASCIIFontSize);
-void OLED_ShowChinese(int16_t X, int16_t Y, char *Chinese, uint8_t FontSize);
+void OLED_ShowChinese(int16_t X, int16_t Y, const char *Chinese, uint8_t FontSize);
 void OLED_Printf(int16_t X, int16_t Y, uint8_t FontSize, char *format, ...);
 void OLED_PrintfMix(int16_t X, int16_t Y, uint8_t ChineseFontSize,uint8_t ASCIIFontSize,const char *format, ...);
 

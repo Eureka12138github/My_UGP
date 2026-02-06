@@ -10,16 +10,8 @@ extern "C" {
 #ifdef OLED_MENU
 
 #include "bsp_ui_input.h"
-#include "bsp_delay.h"	
 #include "OLED.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "storage.h"	
-#include "pms7003_drv.h"
 #include "bsp_rtc.h"	
-extern bool Limit_Save;	
-extern bool Clear_Data;	
-extern bool Alarm_Off_Manual;
 
 // 显存缓存区
 extern uint8_t OLED_DisplayBuf[OLED_HEIGHT/8][OLED_WIDTH];
@@ -100,9 +92,7 @@ extern uint8_t OLED_DisplayBuf[OLED_HEIGHT/8][OLED_WIDTH];
 /***********关于显示模式的宏***********/
 #define DARKMODE						true			//深色模式
 #define LIGHTMODE						false			//浅色模式
-#define LIMIT_SAVED						false
-#define Clear_Stored_Data				false	
-#define alarm_off						false		
+		
 //#define LED_OFF							false	
 
 /***********关于互斥锁或者标志位的宏***********/
@@ -133,11 +123,6 @@ extern uint8_t OLED_DisplayBuf[OLED_HEIGHT/8][OLED_WIDTH];
 #define WINDOW_RECTANGLE			(0)			//矩形窗口
 #define WINDOW_ROUNDRECTANGLE		(1)			//圆角矩形窗口
 
-/*********************关于窗口用途的宏（不可储存在数组 0 的位置，具体看Store.c）********************** */
-#define DUST_LIMIT_Store_IDX				(1)			//扬尘阈值存储索引
-#define NOISE_LIMIT_Store_IDX				(2)			//噪音阈值存储索引
-#define RESET_TIMERS_Store_IDX				(5)			//复位次数阈值存储索引
-//除了这里之外，见ErrorWarningLog.h里面也有关于存储位置的索引
 /*********************关于窗口数据类型的宏* ***************/
 #define WINDOW_DATA_STYLE_NONE	    (0)			//空
 #define WINDOW_DATA_STYLE_FLOAT		(1)			//浮点型数据
@@ -316,8 +301,9 @@ typedef struct MenuItem {
     const uint8_t* Tiles_Icon;//图标
 
     float _LineSlip;//？
-	u16* General_Value;
-	u8* General_Value1;
+	float* float_Value;
+	u16* u16_Value;
+	u8* u8_Value;
 	bool* ShowErrorMeg;
 	MYRTC* TimeValue;
 } MenuItem;

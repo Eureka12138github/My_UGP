@@ -24,7 +24,7 @@
 
 
 #include "onenet_mqtt.h"
-
+#include "sensors_data.h"
 
 
 char devid[16];
@@ -295,22 +295,18 @@ exit:
     return result;
 }
 
-extern u8 temp,humi;
-extern u16 Dust_Limit;
-extern u8 Noise_Limit;
-extern u16 decibels;//当前环境中分贝大小
-extern u16 PM2_5_ENV;
+
+
 /**
  * @brief 生成 OneNET 平台所需的 JSON 数据包
  * @param buf       输出缓冲区
  * @param buf_size  缓冲区大小（字节）
  * @return          成功时返回写入的字符数（不含 '\0'），失败返回 -1
  *
- * @note 修改 JSON 字段时请注意：
- *       - JSON 对象中 **最后一个字段后面不能有逗号**；
- *       - 若增删字段，务必同步调整前一项末尾的逗号（`,`）；
- *       - 例如：删除最后一项时，需将其前一项末尾的逗号一并删除；
- *       - 否则将生成非法 JSON，导致 OneNET 解析失败！
+ * @note 
+ *   - 所有传感器数据通过 SensorsData_Get() 获取，确保一致性；
+ *   - 报警状态（dust_excess/noise_excess）基于当前数据与阈值实时计算；
+ *   - JSON 格式严格校验，避免 OneNET 解析失败。
  */
 int OneNet_FillBuf(char *buf, size_t buf_size)
 {
@@ -318,25 +314,30 @@ int OneNet_FillBuf(char *buf, size_t buf_size)
         return -1;
     }
 
+    const SensorsData_t* data = SensorsData_Get();
+    // 实时计算报警状态（避免依赖全局报警标志，更可靠）
+    bool dust_excess  = (data->pm.pm2_5_env > Dust_Limit);
+    bool noise_excess = (data->noise.noise_db > (float)Noise_Limit);
+
     int len = snprintf(buf, buf_size,
         "{\"id\":\"123\",\"params\":{"
-            "\"temp\":{\"value\":%d},"
-            "\"humi\":{\"value\":%d},"
-            "\"dust\":{\"value\":%d},"
-            "\"noise\":{\"value\":%d},"
-            "\"noise_limit\":{\"value\":%d},"
-            "\"dust_limit\":{\"value\":%d},"
-            "\"dust_excess\":{\"value\":%s},"      // ← 非最后一项，保留逗号
-			"\"noise_excess\":{\"value\":%s}"      // ← 最后一项，**无逗号**，报警可改为事件上传而非属性
+            "\"temp\":{\"value\":%u},"
+            "\"humi\":{\"value\":%u},"
+            "\"dust\":{\"value\":%u},"
+            "\"noise\":{\"value\":%.1f},"
+            "\"noise_limit\":{\"value\":%u},"
+            "\"dust_limit\":{\"value\":%u},"
+            "\"dust_excess\":{\"value\":%s},"
+            "\"noise_excess\":{\"value\":%s}"
         "}}",
-        temp,
-        humi,
-        PM2_5_ENV,
-        decibels,
-        Noise_Limit,
-        Dust_Limit,
-        (PM2_5_ENV > Dust_Limit) ? "true" : "false",
-        (decibels > Noise_Limit) ? "true" : "false"
+        (unsigned)data->temp,
+        (unsigned)data->humi,
+        (unsigned)data->pm.pm2_5_env,
+         data->noise.noise_db, 
+        (unsigned)Noise_Limit,
+        (unsigned)Dust_Limit,
+        dust_excess ? "true" : "false",
+        noise_excess ? "true" : "false"
     );
 
     if (len < 0 || (size_t)len >= buf_size) {
@@ -516,7 +517,6 @@ u8 OneNet_RevPro(unsigned char *cmd)
 
     // ==================== 包类型识别 ====================
     type = MQTT_UnPacketRecv(cmd);      // 解析MQTT包类型
-
     // ==================== 消息分发处理 ====================
     switch (type)
     {
@@ -533,6 +533,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
                 &qos,
                 &pkt_id
             );
+			
 
             // 包解析失败处理
             if (unpack_result != 0)
@@ -540,12 +541,12 @@ u8 OneNet_RevPro(unsigned char *cmd)
                 result = ONENET_PARSE_ERR;
                 goto cleanup;
             }
-
             // 解析JSON载荷
             raw_json = cJSON_Parse(req_payload);
             if (raw_json == NULL)
             {
                 result = ONENET_PARSE_ERR;
+				ONENET_LOG_PARSE("❌ cJSON_Parse FAILED! Payload: [%s]", req_payload);
                 goto cleanup;
             }
 
@@ -575,7 +576,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
                 if (dust_limit_json && cJSON_IsNumber(dust_limit_json))
                 {
                     Dust_Limit = (int)dust_limit_json->valuedouble;
-                    Store_Data[IDX_DUST_LIMIT] = Dust_Limit;
+                    Store_Data[DUST_LIMIT_STORE_IDX] = Dust_Limit;
                     Store_Save();  // 保存到存储
                 }
 
@@ -584,7 +585,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
                 if (noise_limit_json && cJSON_IsNumber(noise_limit_json))
                 {
                     Noise_Limit = (int)noise_limit_json->valuedouble;
-                    Store_Data[IDX_NOISE_LIMIT] = Noise_Limit;
+                    Store_Data[NOISE_LIMIT_STORE_IDX] = Noise_Limit;
                     Store_Save();  // 保存到存储
                 }
 
@@ -676,6 +677,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
         // -------------------- PUBACK确认包处理 --------------------
         case MQTT_PKT_PUBACK:
         {
+			ONENET_LOG_PARSE("Get into MQTT_PKT_PUBACK Case?");
             if (MQTT_UnPacketPublishAck(cmd) == 0)
             {
                 result = ONENET_OK;
@@ -690,6 +692,7 @@ u8 OneNet_RevPro(unsigned char *cmd)
         // -------------------- SUBACK订阅确认处理 --------------------
         case MQTT_PKT_SUBACK:
         {
+			ONENET_LOG_PARSE("Get into MQTT_PKT_SUBACK Case?");
             if (MQTT_UnPacketSubscribe(cmd) == 0)
             {
                 result = ONENET_OK;

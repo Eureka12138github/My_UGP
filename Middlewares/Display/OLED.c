@@ -538,7 +538,7 @@ void OLED_ShowString(int16_t X, int16_t Y, const char *String, uint8_t FontSize)
   * 返 回 值：无
   * 说    明：调用此函数后，要想真正地呈现在屏幕上，还需调用更新函数
   */
-void OLED_ShowChinese(int16_t X, int16_t Y, char *Chinese, uint8_t FontSize)
+void OLED_ShowChinese(int16_t X, int16_t Y, const char *Chinese, uint8_t FontSize)
 {
     uint8_t pChinese = 0;
     uint8_t pIndex;

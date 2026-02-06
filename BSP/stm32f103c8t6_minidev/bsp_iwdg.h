@@ -5,10 +5,8 @@
 #include "bsp_delay.h"
 #include "storage.h"
 #include "error_warning_log.h"
-extern u16 Reset_Count;
 void MYIWD_Init(uint16_t MaxTime);
 void Check_Reset_Way(void);
-
 
 
 #endif

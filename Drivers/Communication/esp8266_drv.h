@@ -18,15 +18,17 @@
 #include <stdbool.h>   // 使用标准 bool 类型（替代 _Bool）
 #include <ctype.h>     // isdigit()
 #include <stdlib.h>    // atoi()
+#include <time.h>    // atoi()
 
 /* === 平台与 BSP 依赖 === */
 #include "stm32f10x.h"
 #include "bsp_usart.h"
 #include "bsp_config.h"
 #include "debug_config.h"
-#include "project_secrets.h"
+#include "system_config.h"
 #include "bsp_delay.h"
 #include "OLED.h"
+#include "bsp_rtc.h"
 
 /* === 配置宏 === */
 #define IPD_BUFFER_SIZE 256U  /*!< +IPD 数据载荷最大缓冲区大小 */

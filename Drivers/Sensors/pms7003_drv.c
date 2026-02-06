@@ -1,4 +1,8 @@
 #include "pms7003_drv.h"
+
+#include <stddef.h>  // 用于NULL定义
+#include "bsp_pms7003.h"
+#include "sensors_data.h"
 #define PARSE_DATA(packet, index) \
     ((uint16_t)((packet[index] << 8) | packet[index + 1]))
 	
@@ -81,4 +85,5 @@ PM_SensorData PMS_ParseDataPacket(const uint8_t *packet)
     
     return data;
 }
+
 
