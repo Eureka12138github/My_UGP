@@ -10,16 +10,8 @@ extern "C" {
 #ifdef OLED_MENU
 
 #include "bsp_ui_input.h"
-#include "bsp_delay.h"	
 #include "OLED.h"
-#include "stdint.h"
-#include "stdbool.h"
-#include "storage.h"	
-#include "pms7003_drv.h"
 #include "bsp_rtc.h"	
-extern bool Limit_Save;	
-extern bool Clear_Data;	
-extern bool Alarm_Off_Manual;
 
 // 显存缓存区
 extern uint8_t OLED_DisplayBuf[OLED_HEIGHT/8][OLED_WIDTH];
@@ -100,9 +92,7 @@ extern uint8_t OLED_DisplayBuf[OLED_HEIGHT/8][OLED_WIDTH];
 /***********关于显示模式的宏***********/
 #define DARKMODE						true			//深色模式
 #define LIGHTMODE						false			//浅色模式
-#define LIMIT_SAVED						false
-#define Clear_Stored_Data				false	
-#define alarm_off						false		
+		
 //#define LED_OFF							false	
 
 /***********关于互斥锁或者标志位的宏***********/
@@ -311,8 +301,9 @@ typedef struct MenuItem {
     const uint8_t* Tiles_Icon;//图标
 
     float _LineSlip;//？
-	u16* General_Value;
-	u8* General_Value1;
+	float* float_Value;
+	u16* u16_Value;
+	u8* u8_Value;
 	bool* ShowErrorMeg;
 	MYRTC* TimeValue;
 } MenuItem;

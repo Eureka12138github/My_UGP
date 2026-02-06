@@ -1,16 +1,9 @@
 #include "oled_menu.h"
 #include "menu_data.h"
-#include "bsp_usart.h"
-#include "pms7003_drv.h"
-#include "xm7903_drv.h"
-#include "esp8266_drv.h"
-#include "onenet_mqtt.h"
-#include "bsp_timer.h"
-#include "dht11_drv.h"
-#include "bsp_alarm.h"
 #include "bsp_iwdg.h"
 #include "task_sched.h"
 #include "System_Init.h"
+#include "onenet_handler.h"
 /*
 重要：编译器的优化等级要开高点才能编译通过，不然FLASH就满了!
 方法：点击魔术棒，点开C/C++页面，将"Optimization"等级改为Level 3(-o3)
@@ -65,54 +58,57 @@
 // SDA -> PB9
 
 
+/**
+ * @brief 主函数入口
+ *
+ * 初始化硬件及系统资源，启动任务调度循环。
+ */
+int main(void) {
+    Delay_Init();                          // 初始化延时函数
+    Initialize_Hardware();                 // 硬件初始化
+    ReadStoreErrorTime();                  // 读取存储的错误时间
+    Check_Reset_Way();                     // 检查复位方式（如看门狗复位则更新计数）
+    Initialize_System();                   // 系统初始化
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 设置NVIC优先级分组（全局唯一）
 
+    OLED_UI_Init(&MainMenuPage);           // 初始化OLED UI界面
+    MyRTC_Init();                          // 初始化实时时钟
+    MYIWD_Init(2000);                      // 初始化独立看门狗（2秒喂狗间隔）
 
-int main(){
-	Delay_Init();
-	Initialize_Hardware();
-	ReadStoreErrorTime();
-	Check_Reset_Way();//检查复位方式，若是看门狗复位，复位次数加一并储存到FLASH中	    
-	Initialize_System();
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 全局唯一调用点
-	
-	OLED_UI_Init(&MainMenuPage);//UI初始化
-	MyRTC_Init();//系统时间设置
-	MYIWD_Init(2000);//独立看门狗初始化，喂狗间隔为2000ms
-	PM_Data.pm2_5_env = 100;//静态警报测试
-	decibels = 67;	
-	
-	while(1){
-//		decibels = g_xm7903_data.noise_db;
-		DMATaskHandler();//获取扬尘数据
-        Handle_Alarm();// 处理报警条件
-		Wrap_OLED_UI();
-		TaskHandler();//任务处理（包含数据发送、时间获取、警报处理等事件）
-		Handle_Thresholds();//保存与恢复默认阈值
-		Handle_Network_Data();//接收OneNet数据
-		IWDG_ReloadCounter();//喂狗
-	}
-}
-
-//中断函数
-void TIM4_IRQHandler(void)
-{
-	if (TIM_GetITStatus(TIM4, TIM_IT_Update) == SET)
-	{
-		OLED_UI_InterruptHandler();
-		
-		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
-	}
-}
-
-void TIM2_IRQHandler(void)
-{
-    // 检查是否有更新中断发生
-    if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
-    {
-		TaskSchedule();
-        // 清除更新中断的标志位
-        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+    while (1) {
+        DMATaskHandler();                  // 处理DMA相关任务（如扬尘数据采集）
+        Handle_Alarm();                    // 处理报警逻辑
+        Wrap_OLED_UI();                    // 更新OLED显示内容
+        TaskHandler();                     // 执行定时任务（数据发送、时间获取等）
+        Handle_Thresholds();               // 处理阈值保存与恢复
+        Handle_Network_Data();             // 接收并处理OneNet网络数据
+        IWDG_ReloadCounter();              // 喂狗，防止看门狗复位
     }
+}
 
+/* ======================== 中断服务函数 ======================== */
+
+/**
+ * @brief TIM4中断服务函数
+ *
+ * 用于处理OLED UI刷新相关的定时中断。
+ */
+void TIM4_IRQHandler(void) {
+    if (TIM_GetITStatus(TIM4, TIM_IT_Update) == SET) {
+        OLED_UI_InterruptHandler();        // 调用OLED UI中断处理函数
+        TIM_ClearITPendingBit(TIM4, TIM_IT_Update); // 清除中断标志位
+    }
+}
+
+/**
+ * @brief TIM2中断服务函数
+ *
+ * 用于驱动任务调度器的时间更新。
+ */
+void TIM2_IRQHandler(void) {
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET) {
+        TaskSchedule();                    // 更新任务调度器的时间计数
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update); // 清除中断标志位
+    }
 }
 

@@ -16,9 +16,9 @@ typedef struct {
 void SensorsData_Update_PM(const PM_SensorData* pm);
 void SensorsData_Update_Noise(const XM7903_Data_t* noise);
 void SensorsData_Update_Temp_Humi(const u16* temp,const u16* humi);
-void SensorsData_Update_Dust_Limit(const u16* dust_limit);
-void SensorsData_Update_Noise_Limit(const u16* noise_limit);
+const SensorsData_t* SensorsData_Get(void);
 
+extern SensorsData_t g_sensor_data;
 //调用函数更新各个数据，
 
 

@@ -71,7 +71,7 @@ XM7903_Data_t XM7903_Parse(const uint8_t *frame)
     uint16_t raw_noise = (frame[3] << 8) | frame[4];
 
     // 4. 转换为 dB（根据手册：真实值 = 寄存器值 / 10）
-    result.noise_db = raw_noise / 10.0f;
+    result.noise_db = raw_noise / 10;
     result.valid = true;
 
     return result;

@@ -1,7 +1,13 @@
 #include "System_Init.h"
+#include "OLED.h"
 #include "bsp_pms7003.h"
-
-
+#include "system_config.h"
+#include "onenet_mqtt.h"
+#include "error_warning_log.h"
+#include "bsp_alarm.h"
+#include "bsp_timer.h"
+#include "dht11_drv.h"
+#include "bsp_xm7903.h"
 
 /**
  * @brief  初始化硬件。

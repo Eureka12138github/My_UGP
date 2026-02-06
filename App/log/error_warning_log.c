@@ -1,5 +1,4 @@
 #include "error_warning_log.h"
-
 /**
  * @brief 将指定索引的错误时间信息存储到 Store_Data 数组中
  * @param index 错误日志索引（0 ～ ERROR_TIME_ARRAY_SIZE-1）
@@ -95,9 +94,9 @@ void ErrorType(u8 Type) {
 	if(++LogIndex == ERROR_TIME_ARRAY_SIZE){
 		LogIndex = 0;
 	}	
-//    Store_Data[ERROR_LOG_STORE_IDX] = LogIndex;
+    Store_Data[ERROR_LOG_STORE_IDX] = LogIndex;
 
-//    Store_Save();//调试阶段暂不开启存储功能
+    Store_Save();//调试阶段暂不开启存储功能
 }
 
 /**

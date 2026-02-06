@@ -1,4 +1,7 @@
 #include "oled_menu.h"
+#include "bsp_delay.h"	
+
+
 
 
 #ifdef OLED_MENU
@@ -14,9 +17,6 @@ MenuWindow *CurrentWindow = NULL;									//全局结构体指针，当前窗口
 MutexFlag KeyEnterFlag = FLAGEND;										//全局enter按键的互斥锁，互斥锁为FLAGSTART时表示正在执行回调函数
 MutexFlag FadeOutFlag = FLAGEND;										//渐隐效果的互斥锁，互斥锁为FLAGSTART时表示正在执行渐隐效果
 MutexFlag WindowFlag = FLAGEND;										//窗口互斥锁，互斥锁为FLAGSTART时表示正在执行窗口动画
-bool Limit_Save = LIMIT_SAVED;
-bool Clear_Data = Clear_Stored_Data;
-bool Alarm_Off_Manual = alarm_off;
 bool ColorMode = DARKMODE;											//全局布尔型数据，存储当前显示模式，true为深色模式，false为浅色模式
 u16 OLED_UI_Brightness = 100;									//全局变量，存储当前屏幕亮度
 OLED_UI_WindowSustainCounter OLED_SustainCounter = {0,false};			//用于存储窗口持续时间的结构体
@@ -802,8 +802,9 @@ void SetTargetCursor(void){
 		GetOLED_Font(CurrentMenuPage->General_FontSize,CHINESE),
 		GetOLED_Font(CurrentMenuPage->General_FontSize,ASCII),
 		CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].General_item_text,
-		*(CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].General_Value),
-		*(CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].General_Value1),
+		*(CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].float_Value),
+		*(CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].u16_Value),
+		*(CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].u8_Value),
 		CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].TimeValue->Year,
 		CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].TimeValue->Month,
 		CurrentMenuPage->General_MenuItems[CurrentMenuPage->_ActiveMenuID].TimeValue->Day,
@@ -988,8 +989,9 @@ void PrintMenuElements(void){
 
 			//记录此轮循环的字符串宽度
 			int16_t StringLength = CalcStringWidth(ChineseFont,ASCIIFont,page->General_MenuItems[i].General_item_text,
-			*(page->General_MenuItems[i].General_Value),
-			*(page->General_MenuItems[i].General_Value1),
+			*(page->General_MenuItems[i].float_Value),
+			*(page->General_MenuItems[i].u16_Value),
+			*(page->General_MenuItems[i].u8_Value),
 			page->General_MenuItems[i].TimeValue->Year,
 			page->General_MenuItems[i].TimeValue->Month,
 			page->General_MenuItems[i].TimeValue->Day,
@@ -1060,7 +1062,7 @@ void PrintMenuElements(void){
 			s16 cursorX = CursorPoint.X + LinePerfixWidth + page->General_MenuItems[i]._LineSlip;
 			s16 cursorY = CursorPoint.Y;
 			//仅显示时间，见“更多”选项里面的“时间”	
-			if(page->General_MenuItems[i].TimeValue != NULL && page->General_MenuItems[i].General_Value1 == NULL && page->General_MenuItems[i].ShowErrorMeg == NULL){
+			if(page->General_MenuItems[i].TimeValue != NULL && page->General_MenuItems[i].u8_Value == NULL && page->General_MenuItems[i].ShowErrorMeg == NULL){
 			OLED_PrintfMixArea(x,y,width,height,cursorX,cursorY,
 			ChineseFont,ASCIIFont,
 			page->General_MenuItems[i].General_item_text,
@@ -1071,11 +1073,11 @@ void PrintMenuElements(void){
 			page->General_MenuItems[i].TimeValue->Minute,
 			page->General_MenuItems[i].TimeValue->Second);	
 			}//显示错误类型加时间
-			else if(page->General_MenuItems[i].ShowErrorMeg != NULL && page->General_MenuItems[i].TimeValue != NULL && page->General_MenuItems[i].General_Value1 != NULL){
+			else if(page->General_MenuItems[i].ShowErrorMeg != NULL && page->General_MenuItems[i].TimeValue != NULL && page->General_MenuItems[i].u8_Value != NULL){
 				OLED_PrintfMixArea(x,y,width,height,cursorX,cursorY,
 				ChineseFont,ASCIIFont,
 				page->General_MenuItems[i].General_item_text,
-				*(page->General_MenuItems[i].General_Value1),//错误类型	
+				*(page->General_MenuItems[i].u8_Value),//错误类型	
 				page->General_MenuItems[i].TimeValue->Year,//错误时间	
 				page->General_MenuItems[i].TimeValue->Month,
 				page->General_MenuItems[i].TimeValue->Day,
@@ -1092,18 +1094,22 @@ void PrintMenuElements(void){
 //				}
 			}
 			//显示 文字+u16 类型的数据	
-			else if(page->General_MenuItems[i].General_Value != NULL){
+			else if(page->General_MenuItems[i].u16_Value != NULL){
 			OLED_PrintfMixArea(x,y,width,height,cursorX,cursorY,
 			ChineseFont,ASCIIFont,
 			page->General_MenuItems[i].General_item_text,
-			*(page->General_MenuItems[i].General_Value));
-			//显示 文字+u8 类型的数据		
-			}else{
-			//正常显示只有文字	
+			*(page->General_MenuItems[i].u16_Value));
+			//显示float类型数据
+			}else if(page->General_MenuItems[i].float_Value != NULL){
+			OLED_PrintfMixArea(x,y,width,height,cursorX,cursorY,
+			ChineseFont,ASCIIFont,
+			page->General_MenuItems[i].General_item_text,
+			*(page->General_MenuItems[i].float_Value));		
+			//只显示文字
+			}else {
 			OLED_PrintfMixArea(x,y,width,height,cursorX,cursorY,
 			ChineseFont,ASCIIFont,
 			page->General_MenuItems[i].General_item_text);			
-			
 			}
 
 			// 打印光标下移

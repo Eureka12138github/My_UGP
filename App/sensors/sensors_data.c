@@ -1,6 +1,6 @@
 #include "sensors_data.h"
 
-static SensorsData_t g_sensor_data = {
+SensorsData_t g_sensor_data = {
     .pm = {0},          
     .noise = {
 	.noise_db = 0.0f,

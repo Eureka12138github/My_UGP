@@ -40,8 +40,6 @@
 
 
 
-_Bool OneNET_RegisterDevice(void);
-
 unsigned char OneNet_DevLink(void);
 
 int8_t OneNet_SendData(void);
