@@ -68,7 +68,6 @@ extern const uint8_t My_WeChat[];
 extern const uint8_t Monitor_Station[];
 extern const uint8_t My_Settings[];
 extern const uint8_t My_Image_more[];
-extern const uint8_t USC_LOGO_64[];
 /*按照上面的格式，在这个位置加入新的图像数据声明*/
 //...
 

@@ -88,7 +88,7 @@ void Check_Reset_Way(void) {
     Reset_Count = Store_Data[RESET_TIMERS_STORE_IDX];
 
     // 显示统一启动图标
-    OLED_ShowImageArea(0, 0, 64, 64, 0, 0, 64, 64, USC_LOGO_64);
+    OLED_ShowImageArea(0, 0, 63, 63, 0, 0, 64, 64, Sherry);
 
     // ✅ 优先检查：是否为看门狗复位（主循环卡死）
     if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST) == SET) {
