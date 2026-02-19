@@ -119,4 +119,19 @@ My_UGP/
 
 ```
 
+## 📡 OneNet 自定义功能点
+
+本项目通过 MQTT 协议将传感器数据上报至 OneNet 云平台，使用以下 10 个自定义属性（Property）：
+
+| 名称 | 标识符 | 类型 | 取值范围 | 用途 |
+| --- | --- | --- | --- | --- |
+| 扬尘 | `dust` | int32 | 0–1000 | PMS7003 实时采集 |
+| 扬尘过大 | `dust_excess` | bool | true/false | 本地判断：`dust > dust_limit` |
+| 扬尘阈值 | `dust_limit` | int32 | 1–1000 | 可通过云平台远程修改 |
+| 噪音 | `noise` | float | 0.0–100.0 | XM7903 实时采集 |
+| 噪音过大 | `noise_excess` | bool | true/false | 本地判断：`noise > noise_limit` |
+| 噪音阈值 | `noise_limit` | int32 | 1–120 | 可通过云平台远程修改 |
+| 湿度 | `humi` | int32 | 0–100 | DHT11 采集 |
+| 温度 | `temp` | int32 | 0–100 | DHT11 采集 |
+
 <!-- 注：本项目部分代码参考或复用了开源项目，包括 cJSON、OLED UI、Base64 编码实现及 MQTT 协议相关逻辑，特此致谢。 -->
