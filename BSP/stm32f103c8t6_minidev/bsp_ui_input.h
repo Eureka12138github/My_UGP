@@ -10,9 +10,6 @@
 #define Key_GetDownStatus()     GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1)
 
 
-//定时器中断初始化函数
-void Timer4_Init(void);
-
 //按键初始化函数
 void Key_Init(void);
 
