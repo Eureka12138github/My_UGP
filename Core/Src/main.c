@@ -69,7 +69,7 @@ int main(void) {
     ReadStoreErrorTime();                  // 读取存储的错误时间
     Check_Reset_Way();                     // 检查复位方式（如看门狗复位则更新计数）
     Initialize_System();                   // 系统初始化
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // 设置NVIC优先级分组（全局唯一）
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); // 设置NVIC优先级分组（全局唯一）
 
     OLED_UI_Init(&MainMenuPage);           // 初始化OLED UI界面
     MyRTC_Init();                          // 初始化实时时钟

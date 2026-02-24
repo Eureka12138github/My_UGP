@@ -761,7 +761,8 @@ void MenuItemsMoveRight(void){
  * @return 当前菜单页面的槽位数量
  */
 int16_t GetCurrentMenuPageMaxSlotNum(void){
-	return (int16_t)(CurrentMenuPage->List_MenuArea.Height - CurrentMenuPage->List_StartPointY+OLED_UI_LineStep.TargetDistance-1) / (OLED_UI_LineStep.TargetDistance + CurrentMenuPage->General_FontSize );
+	return (int16_t)(CurrentMenuPage->List_MenuArea.Height - CurrentMenuPage->List_StartPointY+OLED_UI_LineStep.TargetDistance-1)\
+		/ (OLED_UI_LineStep.TargetDistance + CurrentMenuPage->General_FontSize );
 }
 
 

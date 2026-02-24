@@ -18,6 +18,7 @@
  */
 
 #include "bsp_usart.h"
+#include "bsp_config.h"
 
 /* ======================== 类型定义 ======================== */
 
@@ -110,8 +111,8 @@ void Usart1_Init(uint32_t baud)
     // 配置 NVIC（抢占优先级 0，子优先级 0）
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART1_PRIO;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = SUB_PRIO_UNUSED;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
@@ -168,8 +169,8 @@ void Usart2_Init(uint32_t baud)
 
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART2_PRIO;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = SUB_PRIO_UNUSED;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
@@ -217,8 +218,8 @@ void Usart3_Init(uint32_t baud)
 
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART3_PRIO;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = SUB_PRIO_UNUSED;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
@@ -233,7 +234,79 @@ void Usart3_Init(uint32_t baud)
 }
 #endif
 
+//USART3
+void Debug_Usart_Init(u32 baud)
+{
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3,ENABLE);//开启USART3时钟
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB,ENABLE);//开启GPIOB时钟，因为需要用到PB10与PB11
+	/*
+	下面是把PB10配置为复用推挽输出，供USART3的TX使用
+	*/
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Pin=GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
+	GPIO_Init(GPIOB,&GPIO_InitStructure);
+	
+	GPIO_InitStructure.GPIO_Mode=GPIO_Mode_IPU;//对于输入可以选用浮空输入或上拉输入模式
+	GPIO_InitStructure.GPIO_Pin=GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
+	GPIO_Init(GPIOB,&GPIO_InitStructure);
+	/*
+	下面串口配置情况：
+	9600波特率，8位字长，无校验，1位停止位，无流控，
+	*/
+	USART_InitTypeDef USART_InitStructure;
+	USART_InitStructure.USART_BaudRate=baud;//设置波特率
+	USART_InitStructure.USART_HardwareFlowControl=USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode=USART_Mode_Tx|USART_Mode_Rx;//同时开启发送与接收
+	USART_InitStructure.USART_Parity=USART_Parity_No;
+	USART_InitStructure.USART_StopBits=USART_StopBits_1;
+	USART_InitStructure.USART_WordLength=USART_WordLength_8b;
+	USART_Init(USART3,&USART_InitStructure);
+	USART_ITConfig(USART3,USART_IT_RXNE,ENABLE);//此为开启RXNE标志位到NVIC的输出
+	/*
+	一旦RXNE标志位一旦置1了，就会向NVIC申请中断，之后可以在中断函数里接收数据
+	*/
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	
+	NVIC_InitTypeDef NVIC_InitStructure;
+	NVIC_InitStructure.NVIC_IRQChannel=USART3_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = USART_DEBUG_PRIO;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority=SUB_PRIO_UNUSED;
+	NVIC_Init(&NVIC_InitStructure);
+	//使能串口
+	USART_Cmd(USART3,ENABLE);
+	
+}
+
 /* ======================== 发送 API ======================== */
+
+void Serial_SendByte_temp(USART_TypeDef *USARTx,uint8_t Byte)
+{
+	USART_SendData(USARTx,Byte);//此函数将Byte变量写入到TDR
+	while(USART_GetFlagStatus(USARTx,USART_FLAG_TXE)==RESET);//等待TDR的数据转移到移位寄存器
+}
+
+void Serial_SendString_temp(USART_TypeDef *USARTx,char*String)//字符串自带结束标志位故无需传递长度参数
+{
+	uint8_t i;
+	for(i=0;String[i]!='\0';i++)
+	{
+		Serial_SendByte(USARTx,String[i]);//将String字符串一个个取出，通过SendByte发送
+	}
+}
+
+void Serial_Printf_temp(USART_TypeDef *USARTx, char *format, ...)
+{
+    char String[100];
+    va_list arg;
+    va_start(arg, format);
+    vsnprintf(String, sizeof(String), format, arg);  // ✅ 限制最大长度
+    va_end(arg);
+    Serial_SendString(USARTx, String);
+}
 
 /**
  * @brief 向指定串口发送一个字节（非阻塞）

@@ -20,8 +20,7 @@ void Initialize_Hardware(void) {
     Alarm_Init();//警报初始化
 	BSP_PMS7003_Init();//扬尘传感器初始化
 	BSP_XM7903_Init();//噪音传感器初始化
-	ESP8266_HardwareInit();
-	Usart3_Init(9600);   
+	ESP8266_HardwareInit();  
 	
 }
 

@@ -42,6 +42,10 @@ int Serial_ReadByte(USART_TypeDef* USARTx);
 size_t Serial_ReadArray(USART_TypeDef* USARTx, uint8_t* buf, size_t len);
 size_t Serial_GetRxCount(USART_TypeDef* USARTx);
 
+//temp
+void Serial_Printf_temp(USART_TypeDef *USARTx, char *format, ...);
+void Debug_Usart_Init(u32 baud);
+
 #endif
 
 //以空行结尾

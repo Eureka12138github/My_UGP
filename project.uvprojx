@@ -337,7 +337,7 @@
               <MiscControls>--no-multibyte-chars</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party;.\Test;.\App\cloud;.\Middlewares\Utils\buffer;.\Middlewares\Utils\crypto;.\Middlewares\Utils\debug;.\Middlewares\Protocols\mqtt;.\Middlewares\Display;.\Middlewares\Display\Fonts;.\App\ui\ui_framework;.\App\ui\ui_conten;.\App\log;.\App\storage;.\Core\Src;.\Core\Inc;.\Drivers\Communication;.\Drivers\Sensors;.\Drivers\STM32F10x_StdPeriph_Driver;.\App\task;.\App\system;.\App\sensors</IncludePath>
+              <IncludePath>.\BSP\stm32f103c8t6_minidev;.\Config;.\Middlewares\Core;.\Middlewares\Third_Party;.\Test;.\App\cloud;.\Middlewares\Utils\buffer;.\Middlewares\Utils\crypto;.\Middlewares\Utils\debug;.\Middlewares\Protocols\mqtt;.\App\ui\ui_framework;.\App\ui\ui_conten;.\App\log;.\App\storage;.\Core\Src;.\Core\Inc;.\Drivers\Communication;.\Drivers\Sensors;.\Drivers\STM32F10x_StdPeriph_Driver;.\App\task;.\App\system;.\App\sensors;.\App\ui\ui_basic;.\App\ui\ui_basic\Fonts</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -462,16 +462,6 @@
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_xm7903.h</FilePath>
             </File>
             <File>
-              <FileName>bsp_usart.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.c</FilePath>
-            </File>
-            <File>
-              <FileName>bsp_usart.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.h</FilePath>
-            </File>
-            <File>
               <FileName>bsp_ui_input.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_ui_input.c</FilePath>
@@ -540,6 +530,16 @@
               <FileName>bsp_timer.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_timer.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_usart.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\BSP\stm32f103c8t6_minidev\bsp_usart.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -891,26 +891,6 @@
               <FileType>5</FileType>
               <FilePath>.\Middlewares\Protocols\mqtt\mqtt_kit.h</FilePath>
             </File>
-            <File>
-              <FileName>OLED.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Middlewares\Display\OLED.c</FilePath>
-            </File>
-            <File>
-              <FileName>OLED.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Middlewares\Display\OLED.h</FilePath>
-            </File>
-            <File>
-              <FileName>OLED_Fonts.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Middlewares\Display\Fonts\OLED_Fonts.c</FilePath>
-            </File>
-            <File>
-              <FileName>OLED_Fonts.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Middlewares\Display\Fonts\OLED_Fonts.h</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -1005,6 +985,26 @@
               <FileName>sensors_data.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\App\sensors\sensors_data.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\App\ui\ui_basic\OLED.c</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\App\ui\ui_basic\OLED.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED_Fonts.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\App\ui\ui_basic\Fonts\OLED_Fonts.c</FilePath>
+            </File>
+            <File>
+              <FileName>OLED_Fonts.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\App\ui\ui_basic\Fonts\OLED_Fonts.h</FilePath>
             </File>
           </Files>
         </Group>

@@ -121,4 +121,79 @@
 
 /** @} */
 
+/* ============================================================================ */
+/*                            中断优先级配置                                    */
+/* ============================================================================ */
+/**
+ * @defgroup ISR_Priority_Config 中断优先级配置（NVIC Priority Group = 4）
+ * @{
+ *
+ * @par 配置原则：
+ * - 使用 NVIC_PriorityGroup_4（4 位抢占优先级，0 位子优先级）
+ * - 抢占优先级数值越小，优先级越高（0 = 最高，15 = 最低）
+ * - 所有中断的子优先级必须为 0（由 SUB_PRIO_UNUSED 保证）
+ * - 关键实时中断（如编码器）分配唯一且较高的优先级
+ * - 非关键外设（调试串口、空闲定时器等）统一使用最低优先级 (15)
+ * - 保留 PRE_PRIO_0 ~ PRE_PRIO_4 供未来安全关键中断使用
+ *
+ * @warning 相同抢占优先级的中断无法相互嵌套，且同时挂起时按 IRQn 编号顺序响应，
+ *          因此不同重要性的中断不应共享同一优先级。
+ */
+
+#define SUB_PRIO_UNUSED    (0U)  /*!< Group 4 下子优先级无效，统一设为 0 */
+
+/* 抢占优先级常量（0~15） */
+#define PRE_PRIO_0      (0U)
+#define PRE_PRIO_1      (1U)
+#define PRE_PRIO_2      (2U)
+#define PRE_PRIO_3      (3U)
+#define PRE_PRIO_4      (4U)
+#define PRE_PRIO_5      (5U)
+#define PRE_PRIO_6      (6U)
+#define PRE_PRIO_7      (7U)
+#define PRE_PRIO_8      (8U)
+#define PRE_PRIO_9      (9U)
+#define PRE_PRIO_10     (10U)
+#define PRE_PRIO_11     (11U)
+#define PRE_PRIO_12     (12U)
+#define PRE_PRIO_13     (13U)
+#define PRE_PRIO_14     (14U)
+#define PRE_PRIO_15     (15U)
+
+/* ---------------- 功能语义化优先级别名 ---------------- */
+
+#define ESP8266_USART_PRIO             PRE_PRIO_6  /*!< WIFI模块串口 */
+#define PMS7003_USART_PRIO             PRE_PRIO_8  /*!< 扬尘传感器串口 */
+#define XM7903_USART_PRIO              PRE_PRIO_9  /*!< 噪音传感器串口 */
+
+#define GENERAL_TASK_HANDLER_PRIO      PRE_PRIO_10  /*!< 通用任务调度定时器（如 TIM2） */
+#define OLED_UI_TIMER4_PRIO			   PRE_PRIO_11	/*!< 控制 UI 刷新的定时器中断 */
+#define USART_DEBUG_PRIO			   PRE_PRIO_12	/*!< 串口调试端口 */
+
+/* ---------------- 具体外设中断优先级映射 ---------------- */
+/* USART */
+//因为 ESP8266 初始需要用到通用的 Usartx_Init，而具体串口是可以修改宏进行调整的
+//所以此处把各个串口的优先级设置高一点，这样即使修改了串口，ESP8266 通信也可以保持高优先级
+#define USART1_PRIO     PRE_PRIO_5
+#define USART2_PRIO     ESP8266_USART_PRIO
+#define USART3_PRIO     PRE_PRIO_7
+
+/* TIM */
+#define TIMER1_PRIO     PRE_PRIO_15
+#define TIMER2_PRIO     GENERAL_TASK_HANDLER_PRIO
+#define TIMER3_PRIO     PRE_PRIO_15
+#define TIMER4_PRIO     OLED_UI_TIMER4_PRIO
+
+/* EXTI */
+#define EXTI0_PRIO      PRE_PRIO_15
+#define EXTI1_PRIO      PRE_PRIO_15
+#define EXTI2_PRIO      PRE_PRIO_15
+#define EXTI3_PRIO      PRE_PRIO_15
+#define EXTI4_PRIO      PRE_PRIO_15
+#define EXTI9_5_PRIO    PRE_PRIO_15
+#define EXTI15_10_PRIO  PRE_PRIO_15
+
+/** @} */ /* End of ISR_Priority_Config */
+
+
 #endif /* BSP_CONFIG_H */
