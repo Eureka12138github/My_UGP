@@ -9,73 +9,33 @@
 uint8_t OLED_DisplayBuf[64/8][128];
 bool OLED_ColorMode = true;
 
+
+
+
 /**
-  * 函    数：OLED写SCL高低电平
-  * 参    数：要写入SCL的电平值，范围：0/1
-  * 返 回 值：无
-  * 说    明：当上层函数需要写SCL时，此函数会被调用
-  *           用户需要根据参数传入的值，将SCL置为高电平或者低电平
-  *           当参数传入0时，置SCL为低电平，当参数传入1时，置SCL为高电平
-  */
+ * @brief  设置 OLED 的 SCL 引脚电平
+ * @param  BitValue: 0 表示低电平，1 表示高电平
+ * @retval 无
+ * @note   用于软件模拟 I2C 时序中的 SCL 控制
+ */
 void OLED_W_SCL(uint8_t BitValue)
 {
-	/*根据BitValue的值，将SCL置高电平或者低电平*/
     GPIO_WriteBit(OLED_GPIO_PORT, OLED_SCL_PIN, (BitAction)BitValue);
-	/*如果单片机速度过快，可在此添加适量延时，以避免超出I2C通信的最大速度*/
-	//...	
+    // 可根据 MCU 速度添加延时以满足 I2C 时序要求
 }
 
 /**
-  * 函    数：OLED写SDA高低电平
-  * 参    数：要写入SDA的电平值，范围：0/1
-  * 返 回 值：无
-  * 说    明：当上层函数需要写SDA时，此函数会被调用
-  *           用户需要根据参数传入的值，将SDA置为高电平或者低电平
-  *           当参数传入0时，置SDA为低电平，当参数传入1时，置SDA为高电平
-  */
+ * @brief  设置 OLED 的 SDA 引脚电平
+ * @param  BitValue: 0 表示低电平，1 表示高电平
+ * @retval 无
+ * @note   用于软件模拟 I2C 时序中的 SDA 控制
+ */
 void OLED_W_SDA(uint8_t BitValue)
 {
-	/*根据BitValue的值，将SDA置高电平或者低电平*/
-	GPIO_WriteBit(OLED_GPIO_PORT, OLED_SDA_PIN, (BitAction)BitValue);	
-	/*如果单片机速度过快，可在此添加适量延时，以避免超出I2C通信的最大速度*/
-	//...
+    GPIO_WriteBit(OLED_GPIO_PORT, OLED_SDA_PIN, (BitAction)BitValue);
+    // 可根据 MCU 速度添加延时以满足 I2C 时序要求
 }
 
-
-
-/**
-  * 函    数：OLED引脚初始化
-  * 参    数：无
-  * 返 回 值：无
-  * 说    明：当上层函数需要初始化时，此函数会被调用
-  *           用户需要将SCL和SDA引脚初始化为开漏模式，并释放引脚
-  */
-void OLED_GPIO_Init(void)
-{
-	uint32_t i, j;
-	
-	/*在初始化前，加入适量延时，待OLED供电稳定*/
-	for (i = 0; i < 1000; i ++)
-	{
-		for (j = 0; j < 1000; j ++);
-	}
-	
-	/*将SCL和SDA引脚初始化为开漏模式*/
-    RCC_APB2PeriphClockCmd(OLED_GPIO_CLK, ENABLE);
-	
-    GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin = OLED_SCL_PIN;
-    GPIO_Init(OLED_GPIO_PORT, &GPIO_InitStructure);
-    
-    GPIO_InitStructure.GPIO_Pin = OLED_SDA_PIN;
-    GPIO_Init(OLED_GPIO_PORT, &GPIO_InitStructure);
-	
-	/*释放SCL和SDA*/
-	OLED_W_SCL(1);
-	OLED_W_SDA(1);
-}
 
 
 
@@ -133,6 +93,37 @@ void OLED_I2C_SendByte(uint8_t Byte)
 	OLED_W_SCL(1);		//额外的一个时钟，不处理应答信号
 	OLED_W_SCL(0);
 }
+
+/**
+ * @brief  初始化 OLED 所用的 GPIO 引脚（SCL/SDA）
+ * @param  无
+ * @retval 无
+ * @note   配置为开漏输出模式，并释放总线（拉高）
+ */
+void OLED_GPIO_Init(void)
+{
+    uint32_t i, j;
+    
+    // 延时等待电源稳定
+    for (i = 0; i < 1000; i++)
+        for (j = 0; j < 1000; j++);
+
+    RCC_APB2PeriphClockCmd(OLED_GPIO_CLK, ENABLE);
+
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin = OLED_SCL_PIN;
+    GPIO_Init(OLED_GPIO_PORT, &GPIO_InitStructure);
+
+    GPIO_InitStructure.GPIO_Pin = OLED_SDA_PIN;
+    GPIO_Init(OLED_GPIO_PORT, &GPIO_InitStructure);
+
+    // 释放 I2C 总线（SCL 和 SDA 拉高）
+    OLED_W_SCL(1);
+    OLED_W_SDA(1);
+}
+
 
 /**
   * 函    数：OLED写命令

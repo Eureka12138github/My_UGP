@@ -3,7 +3,7 @@
 #include "stm32f10x.h"
 #include <stdbool.h> 
 // Device header
-#define Pin_Select GPIO_Pin_12
+#define Pin_Select GPIO_Pin_5
 #define DHT11_High GPIO_SetBits(GPIOB, Pin_Select)
 #define DHT11_Low GPIO_ResetBits(GPIOB, Pin_Select)
 #define DHT11_DQ GPIO_ReadInputDataBit(GPIOB, Pin_Select)
