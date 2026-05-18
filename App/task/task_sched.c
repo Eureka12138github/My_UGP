@@ -100,7 +100,7 @@ void DHT11_Read(void) {
         DHT11_Error_Flag = 0;
     } else {
         if (++DHT11_Error_Flag >= 5) {
-            ErrorType(ENV_SENSOR_TEMP_HUMIDITY_ANOMALY);
+            WarningType(ENV_SENSOR_TEMP_HUMIDITY_ANOMALY);//降级为警报
         }
     }
 }
@@ -191,7 +191,7 @@ void PMS7003_Task(void) {
 
 /** @brief 定时任务表 */
 static TaskComps_t TaskComps[] = {
-	{0, GET_NOISE_DATA_INTERVAL_MS,  GET_NOISE_DATA_INTERVAL_MS,   XM7903_Task},
+	{0, GET_NOISE_DATA_INTERVAL_MS,  GET_NOISE_DATA_INTERVAL_MS,  XM7903_Task},
     {0, DATA_SEND_INTERVAL_MS,       DATA_SEND_INTERVAL_MS,       Data_Send},
     {0, DHT11_READ_INTERVAL_MS,      DHT11_READ_INTERVAL_MS,      DHT11_Read},
     {0, LED_FLASH_INTERVAL_MS,       LED_FLASH_INTERVAL_MS,       Led_Turn},
@@ -222,8 +222,12 @@ void TaskSchedule(void) {
             TaskComps[i].TimCount--;
 
             // 粉尘数据正常则重置错误计时器
-            if (TaskComps[i].pTaskFunc == Dust_Data_Error && pms7003_rx_ready) {
-                TaskComps[i].TimCount = TaskComps[i].TimeRload;
+            if (TaskComps[i].pTaskFunc == Dust_Data_Error) {
+				const SensorsData_t* data = SensorsData_Get();
+				if(data->pm.is_valid) {
+					TaskComps[i].TimCount = TaskComps[i].TimeRload;
+				}
+                
             }
 
             // 噪音数据有效则重置错误计时器

@@ -87,7 +87,7 @@ void BSP_PMS7003_Init(void)
     NVIC_InitTypeDef NVIC_DMA_InitStructure;
     NVIC_DMA_InitStructure.NVIC_IRQChannel = PMS7003_DMA_IRQ;                          // DMA中断号
     NVIC_DMA_InitStructure.NVIC_IRQChannelPreemptionPriority = PMS7003_USART_PRIO;                       // 抢占优先级：最高
-    NVIC_DMA_InitStructure.NVIC_IRQChannelSubPriority = SUB_PRIO_UNUSED;                              // 子优先级：较高
+    NVIC_DMA_InitStructure.NVIC_IRQChannelSubPriority = SUB_PRIO_UNUSED;                              // 子优先级：未使用
     NVIC_DMA_InitStructure.NVIC_IRQChannelCmd = ENABLE;                                 // 使能中断通道
     NVIC_Init(&NVIC_DMA_InitStructure);
 

@@ -1,10 +1,15 @@
 #include "sensors_data.h"
 
 SensorsData_t g_sensor_data = {
-    .pm = {0},          
+    .pm = {
+		//首个先设置为true，因为如果是false的话，定时器那边会来不及重置计数值，触发 Dust_Data_Error ，这是不必要的。
+		.is_valid = true	
+	},          
     .noise = {
-	.noise_db = 0.0f,
-    .valid = true
+		
+		.noise_db = 0.0f,
+		//与上面is_valid类似
+		.valid = true
 	},          
     .temp = 0,
     .humi = 0

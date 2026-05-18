@@ -124,7 +124,7 @@ void Check_Reset_Way(void) {
         Store_Save();
 
         const char* title = "异常复位";
-        const char* msg = "未知错误";
+        const char* msg = "Unknown Error";
 
         switch (err_type) {
             case ENV_COMM_DATA_TRANSMISSION_FAILURE:
@@ -140,7 +140,7 @@ void Check_Reset_Way(void) {
                 msg = "噪音异常！";
                 break;
             default:
-                msg = "其他错误";
+                msg = "Unknown Error";
                 break;
         }
         Display_Reset_Message(title, msg);
